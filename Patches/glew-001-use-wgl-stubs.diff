@@ -1,0 +1,82 @@
+diff -rupN a/src/glew.c b/src/glew.c
+--- a/src/glew.c	2013-07-22 22:11:22 +0800
++++ b/src/glew.c	2013-10-10 19:22:41 +0800
+@@ -37,6 +37,24 @@
+ #  include <GL/glxew.h>
+ #endif
+
++// Mishira changes to prevent dynamic linking of WGL
++#define GLEW_MISHIRA
++#ifdef GLEW_MISHIRA
++
++extern PROC WINAPI wglGetProcAddress_mishira(LPCSTR lpszProc);
++extern HDC WINAPI wglGetCurrentDC_mishira();
++extern const GLubyte* WINAPI glGetString_mishira(GLenum name);
++
++#define wglGetProcAddress_ wglGetProcAddress_mishira
++#define wglGetCurrentDC_ wglGetCurrentDC_mishira
++#define glGetString_ glGetString_mishira
++
++#else
++#define wglGetProcAddress_ wglGetProcAddress
++#define wglGetCurrentDC_ wglGetCurrentDC
++#define glGetString_ glGetString
++#endif
++
+ /*
+  * Define glewGetContext and related helper macros.
+  */
+@@ -159,7 +177,7 @@ void* NSGLGetProcAddress (const GLubyte
+  * Define glewGetProcAddress.
+  */
+ #if defined(_WIN32)
+-#  define glewGetProcAddress(name) wglGetProcAddress((LPCSTR)name)
++#  define glewGetProcAddress(name) wglGetProcAddress_((LPCSTR)name)
+ #elif defined(__APPLE__) && !defined(GLEW_APPLE_GLX)
+ #  define glewGetProcAddress(name) NSGLGetProcAddress(name)
+ #elif defined(__sgi) || defined(__sun)
+@@ -9472,7 +9490,7 @@ GLboolean GLEWAPIENTRY glewGetExtension
+ {
+   const GLubyte* start;
+   const GLubyte* end;
+-  start = (const GLubyte*)glGetString(GL_EXTENSIONS);
++  start = (const GLubyte*)glGetString_(GL_EXTENSIONS);
+   if (start == 0)
+     return GL_FALSE;
+   end = start + _glewStrLen(start);
+@@ -9492,7 +9510,7 @@ GLenum GLEWAPIENTRY glewContextInit (GLE
+   const GLubyte* extStart;
+   const GLubyte* extEnd;
+   /* query opengl version */
+-  s = glGetString(GL_VERSION);
++  s = glGetString_(GL_VERSION);
+   dot = _glewStrCLen(s, '.');
+   if (dot == 0)
+     return GLEW_ERROR_NO_GL_VERSION;
+@@ -9532,7 +9550,7 @@ GLenum GLEWAPIENTRY glewContextInit (GLE
+   }
+
+   /* query opengl extensions string */
+-  extStart = glGetString(GL_EXTENSIONS);
++  extStart = glGetString_(GL_EXTENSIONS);
+   if (extStart == 0)
+     extStart = (const GLubyte*)"";
+   extEnd = extStart + _glewStrLen(extStart);
+@@ -12108,7 +12126,7 @@ GLboolean GLEWAPIENTRY wglewGetExtension
+     else
+       start = (const GLubyte*)_wglewGetExtensionsStringEXT();
+   else
+-    start = (const GLubyte*)_wglewGetExtensionsStringARB(wglGetCurrentDC());
++    start = (const GLubyte*)_wglewGetExtensionsStringARB(wglGetCurrentDC_());
+   if (start == 0)
+     return GL_FALSE;
+   end = start + _glewStrLen(start);
+@@ -12130,7 +12148,7 @@ GLenum GLEWAPIENTRY wglewContextInit (WG
+     else
+       extStart = (const GLubyte*)_wglewGetExtensionsStringEXT();
+   else
+-    extStart = (const GLubyte*)_wglewGetExtensionsStringARB(wglGetCurrentDC());
++    extStart = (const GLubyte*)_wglewGetExtensionsStringARB(wglGetCurrentDC_());
+   extEnd = extStart + _glewStrLen(extStart);
+   /* initialize extensions */
+   crippled = _wglewGetExtensionsStringARB == NULL && _wglewGetExtensionsStringEXT == NULL;

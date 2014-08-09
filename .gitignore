@@ -1,0 +1,22 @@
+# Visual Studio
+*.aps
+*.cso
+*.opensdf
+*.pdb
+*.sdf
+*.suo
+*.user
+*.psess
+*.vsp
+*.vspx
+Debug/
+Release/
+GeneratedFiles/
+Win32/
+x64/
+
+# OS X
+.DS_Store
+
+# Doxygen
+docs/
