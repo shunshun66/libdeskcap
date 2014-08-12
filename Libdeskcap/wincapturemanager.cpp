@@ -420,12 +420,24 @@ bool WinCaptureManager::isHookBlacklisted(HWND hwnd) const
 	if(!filename.compare(QStringLiteral("msiexec.exe"), Qt::CaseInsensitive))
 		return true;
 
-	// MPC-HC crashes randomly for some reason when hooked. Can't figure out
-	// why so we'll blacklist it for now, FIXME
+	// Black list many common application that are unlikely to ever need
+	// accelerated capture yet currently crash sometimes due to Mishira. FIXME
+	if(!filename.compare(QStringLiteral("iexplore.exe"), Qt::CaseInsensitive))
+		return true;
+	if(!filename.compare(QStringLiteral("chrome.exe"), Qt::CaseInsensitive))
+		return true;
+	if(!filename.compare(QStringLiteral("firefox.exe"), Qt::CaseInsensitive))
+		return true;
+	if(!filename.compare(QStringLiteral("opera.exe"), Qt::CaseInsensitive))
+		return true;
+	if(!filename.compare(QStringLiteral("spotify.exe"), Qt::CaseInsensitive))
+		return true;
+	if(!filename.compare(QStringLiteral("steam.exe"), Qt::CaseInsensitive))
+		return true;
+	if(!filename.compare(QStringLiteral("tweetdeck.exe"), Qt::CaseInsensitive))
+		return true;
 	if(!filename.compare(QStringLiteral("mpc-hc.exe"), Qt::CaseInsensitive))
 		return true;
-
-	// AmaRecTV keeps crashing in the D3D9 hook. Blacklist until it's fixed
 	if(!filename.compare(QStringLiteral("amarectv.exe"), Qt::CaseInsensitive))
 		return true;
 
