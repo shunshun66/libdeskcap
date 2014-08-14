@@ -436,7 +436,19 @@ bool WinCaptureManager::isHookBlacklisted(HWND hwnd) const
 		return true;
 	if(!filename.compare(QStringLiteral("tweetdeck.exe"), Qt::CaseInsensitive))
 		return true;
+	if(!filename.compare(QStringLiteral("wmplayer.exe"), Qt::CaseInsensitive))
+		return true;
+	if(!filename.compare(QStringLiteral("vlc.exe"), Qt::CaseInsensitive))
+		return true;
 	if(!filename.compare(QStringLiteral("mpc-hc.exe"), Qt::CaseInsensitive))
+		return true;
+	if(!filename.compare(QStringLiteral("smplayer.exe"), Qt::CaseInsensitive))
+		return true;
+	if(!filename.compare(QStringLiteral("kmplayer.exe"), Qt::CaseInsensitive))
+		return true;
+	if(!filename.compare(QStringLiteral("winamp.exe"), Qt::CaseInsensitive))
+		return true;
+	if(!filename.compare(QStringLiteral("gomplayer.exe"), Qt::CaseInsensitive))
 		return true;
 	if(!filename.compare(QStringLiteral("amarectv.exe"), Qt::CaseInsensitive))
 		return true;
