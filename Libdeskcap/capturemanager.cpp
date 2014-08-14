@@ -261,6 +261,7 @@ QVector<QStringList> CaptureManager::doHelperCommand(
 
 	// Is the helper still running?
 	if(proc->state() != QProcess::Running) {
+#if 0
 		if(is64) {
 			capLog(CapLog::Warning)
 				<< QStringLiteral("64-bit helper not running, cannot execute command");
@@ -268,6 +269,7 @@ QVector<QStringList> CaptureManager::doHelperCommand(
 			capLog(CapLog::Warning)
 				<< QStringLiteral("32-bit helper not running, cannot execute command");
 		}
+#endif // 0
 		return res;
 	}
 
