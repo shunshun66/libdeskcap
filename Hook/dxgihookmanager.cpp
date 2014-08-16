@@ -29,6 +29,8 @@
 // Function stubs
 
 // ID3D10Device::Release()
+extern "C" typedef ULONG (STDMETHODCALLTYPE *DeviceRelease_t)(
+	IUnknown *unknown);
 extern "C" static ULONG STDMETHODCALLTYPE Device10ReleaseHook(
 	IUnknown *unknown)
 {
@@ -37,6 +39,7 @@ extern "C" static ULONG STDMETHODCALLTYPE Device10ReleaseHook(
 }
 
 // ID3D11Device::Release()
+// Share `DeviceRelease_t` above
 extern "C" static ULONG STDMETHODCALLTYPE Device11ReleaseHook(
 	IUnknown *unknown)
 {
@@ -45,6 +48,8 @@ extern "C" static ULONG STDMETHODCALLTYPE Device11ReleaseHook(
 }
 
 // IDXGISwapChain::Release()
+extern "C" typedef ULONG (STDMETHODCALLTYPE *SwapChainRelease_t)(
+	IUnknown *unknown);
 extern "C" static ULONG STDMETHODCALLTYPE SwapChainReleaseHook(
 	IUnknown *unknown)
 {
@@ -53,6 +58,8 @@ extern "C" static ULONG STDMETHODCALLTYPE SwapChainReleaseHook(
 }
 
 // IDXGISwapChain::Present()
+extern "C" typedef HRESULT (STDMETHODCALLTYPE *SwapChainPresent_t)(
+	IDXGISwapChain *chain, UINT SyncInterval, UINT Flags);
 extern "C" static HRESULT STDMETHODCALLTYPE SwapChainPresentHook(
 	IDXGISwapChain *chain, UINT SyncInterval, UINT Flags)
 {
@@ -61,6 +68,9 @@ extern "C" static HRESULT STDMETHODCALLTYPE SwapChainPresentHook(
 }
 
 // IDXGISwapChain::ResizeBuffers()
+extern "C" typedef HRESULT (STDMETHODCALLTYPE *SwapChainResizeBuffers_t)(
+	IDXGISwapChain *chain, UINT BufferCount, UINT Width, UINT Height,
+	DXGI_FORMAT NewFormat, UINT SwapChainFlags);
 extern "C" static HRESULT STDMETHODCALLTYPE SwapChainResizeBuffersHook(
 	IDXGISwapChain *chain, UINT BufferCount, UINT Width, UINT Height,
 	DXGI_FORMAT NewFormat, UINT SwapChainFlags)
@@ -374,6 +384,29 @@ DXGICommonHook *DXGIHookManager::findHookForSwapChain(IDXGISwapChain *chain)
 
 ULONG DXGIHookManager::DeviceReleaseHooked(IUnknown *unknown, bool isDX11)
 {
+#if 0
+	{
+		if(isDX11)
+			HookLog(stringf("ID3D11Device::Release(%p)", unknown));
+		else
+			HookLog(stringf("ID3D10Device::Release(%p)", unknown));
+		m_hookMutex.lock();
+		RewriteHook *rewriteHook = m_Device10ReleaseHook;
+		if(isDX11)
+			rewriteHook = m_Device11ReleaseHook;
+		//rewriteHook->uninstall();
+		//m_hookMutex.unlock();
+		//HRESULT ret = unknown->Release();
+		HRESULT ret = ((DeviceRelease_t)rewriteHook->getTrampoline())(
+			unknown);
+		//m_hookMutex.lock();
+		//rewriteHook->install();
+		m_hookMutex.unlock();
+		return ret;
+	}
+#endif // 0
+	//=============
+
 	m_hookMutex.lock();
 
 	RewriteHook *rewriteHook = m_Device10ReleaseHook;
@@ -383,6 +416,7 @@ ULONG DXGIHookManager::DeviceReleaseHooked(IUnknown *unknown, bool isDX11)
 	// FIXME: We never seem to receive correct release events from devices
 	// making the following code useless. We need to fix this so that DirectX
 	// doesn't complain about referenced objects at process termination.
+	// FIXME: This code also doesn't work with `USE_MINHOOK`
 #define IMPLEMENT_DEVICE_RELEASE 0
 #if IMPLEMENT_DEVICE_RELEASE
 	// Will the device be deleted this call?
@@ -460,9 +494,14 @@ ULONG DXGIHookManager::DeviceReleaseHooked(IUnknown *unknown, bool isDX11)
 	}
 #else
 	// Forward to the real function
+#if USE_MINHOOK
+	HRESULT ret = ((DeviceRelease_t)rewriteHook->getTrampoline())(
+		unknown);
+#else
 	rewriteHook->uninstall();
 	HRESULT ret = unknown->Release();
 	rewriteHook->install();
+#endif // USE_MINHOOK
 #endif // IMPLEMENT_DEVICE_RELEASE
 
 	m_hookMutex.unlock();
@@ -471,12 +510,37 @@ ULONG DXGIHookManager::DeviceReleaseHooked(IUnknown *unknown, bool isDX11)
 
 ULONG DXGIHookManager::SwapChainReleaseHooked(IUnknown *unknown)
 {
+#if 0
+	{
+		HookLog(stringf("IDXGISwapChain::Release(%p)", unknown));
+		m_hookMutex.lock();
+		//m_SwapChainReleaseHook->uninstall();
+		//m_hookMutex.unlock();
+		//HRESULT ret = unknown->Release();
+		HRESULT ret =
+			((SwapChainRelease_t)m_SwapChainReleaseHook->getTrampoline())(
+			unknown);
+		//m_hookMutex.lock();
+		//m_SwapChainReleaseHook->install();
+		m_hookMutex.unlock();
+		return ret;
+	}
+#endif // 0
+	//=============
+
 	m_hookMutex.lock();
 
 	// Will the swap chain be deleted this call?
+#if USE_MINHOOK
+	unknown->AddRef();
+	ULONG refs =
+		((SwapChainRelease_t)m_SwapChainReleaseHook->getTrampoline())(
+		unknown);
+#else
 	m_SwapChainReleaseHook->uninstall();
 	unknown->AddRef();
 	ULONG refs = unknown->Release();
+#endif // USE_MINHOOK
 
 	// Debugging
 	//HookLog(stringf("IDXGISwapChain::Release(%p, %d)", unknown, refs));
@@ -494,7 +558,13 @@ ULONG DXGIHookManager::SwapChainReleaseHooked(IUnknown *unknown)
 		if(FAILED(res)) {
 			// Should never happen
 			HookLog("Accidentally hooked a non-swap chain `Release()`");
+#if USE_MINHOOK
+			ret =
+				((SwapChainRelease_t)m_SwapChainReleaseHook->getTrampoline())(
+				unknown);
+#else
 			ret = unknown->Release();
+#endif // USE_MINHOOK
 			m_SwapChainReleaseHook->install();
 			m_hookMutex.unlock();
 			return ret;
@@ -518,22 +588,35 @@ ULONG DXGIHookManager::SwapChainReleaseHooked(IUnknown *unknown)
 		// If `Release()` is called and we have no other known contexts left
 		// then the program is most likely shutting down. Use this opportunity
 		// to cleanly unhook everything.
-		if(m_hooks.size() <= 0) {
+		// FIXME: This crashes some users so we just disable it for now
+		if(false) { //m_hooks.size() <= 0) {
 			unhook(); // Uninstalls and deletes our hooks
 
 			// Forward to the real function
 			ret = unknown->Release();
 		} else {
 			// Forward to the real function
+#if USE_MINHOOK
+			ret =
+				((SwapChainRelease_t)m_SwapChainReleaseHook->getTrampoline())(
+				unknown);
+#else
 			ret = unknown->Release();
 			m_SwapChainReleaseHook->install();
+#endif // USE_MINHOOK
 		}
 	} else {
 		// Swap chain is not about to be deleted
 
 		// Forward to the real function
+#if USE_MINHOOK
+		ret =
+			((SwapChainRelease_t)m_SwapChainReleaseHook->getTrampoline())(
+			unknown);
+#else
 		ret = unknown->Release();
 		m_SwapChainReleaseHook->install();
+#endif // USE_MINHOOK
 	}
 
 	m_hookMutex.unlock();
@@ -543,6 +626,24 @@ ULONG DXGIHookManager::SwapChainReleaseHooked(IUnknown *unknown)
 HRESULT DXGIHookManager::SwapChainPresentHooked(
 	IDXGISwapChain *chain, UINT SyncInterval, UINT Flags)
 {
+#if 0
+	{
+		HookLog(stringf("IDXGISwapChain::Present(%p)", chain));
+		m_hookMutex.lock();
+		//m_SwapChainPresentHook->uninstall();
+		//m_hookMutex.unlock();
+		//HRESULT ret = chain->Present(SyncInterval, Flags);
+		HRESULT ret =
+			((SwapChainPresent_t)m_SwapChainPresentHook->getTrampoline())(
+			chain, SyncInterval, Flags);
+		//m_hookMutex.lock();
+		//m_SwapChainPresentHook->install();
+		m_hookMutex.unlock();
+		return ret;
+	}
+#endif // 0
+	//=============
+
 	//HookLog(stringf("IDXGISwapChain::Present(%p)", chain));
 	m_hookMutex.lock();
 
@@ -620,9 +721,15 @@ swapChainPresentFailed1:
 		hook->processBufferSwap();
 
 	// Forward to the real function
+#if USE_MINHOOK
+	HRESULT ret =
+		((SwapChainPresent_t)m_SwapChainPresentHook->getTrampoline())(
+		chain, SyncInterval, Flags);
+#else
 	m_SwapChainPresentHook->uninstall();
 	HRESULT ret = chain->Present(SyncInterval, Flags);
 	m_SwapChainPresentHook->install();
+#endif // USE_MINHOOK
 
 	m_hookMutex.unlock();
 	return ret;
@@ -632,6 +739,25 @@ HRESULT DXGIHookManager::SwapChainResizeBuffersHooked(
 	IDXGISwapChain *chain, UINT BufferCount, UINT Width, UINT Height,
 	DXGI_FORMAT NewFormat, UINT SwapChainFlags)
 {
+#if 0
+	{
+		HookLog(stringf("IDXGISwapChain::ResizeBuffers(%p)", chain));
+		m_hookMutex.lock();
+		//m_SwapChainResizeBuffersHook->uninstall();
+		//m_hookMutex.unlock();
+		//HRESULT ret = chain->ResizeBuffers(
+		//	BufferCount, Width, Height, NewFormat, SwapChainFlags);
+		HRESULT ret =
+			((SwapChainResizeBuffers_t)m_SwapChainResizeBuffersHook->getTrampoline())(
+			chain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+		//m_hookMutex.lock();
+		//m_SwapChainResizeBuffersHook->install();
+		m_hookMutex.unlock();
+		return ret;
+	}
+#endif // 0
+	//=============
+
 	// NOTE: We treat this the same way as we treat a Direct3D 9 "reset" which
 	// is not actually required but it does allow reusing existing code.
 
@@ -644,10 +770,16 @@ HRESULT DXGIHookManager::SwapChainResizeBuffersHooked(
 		hook->processResetBefore();
 
 	// Forward to the real function
+#if USE_MINHOOK
+	HRESULT ret =
+		((SwapChainResizeBuffers_t)m_SwapChainResizeBuffersHook->getTrampoline())(
+		chain, BufferCount, Width, Height, NewFormat, SwapChainFlags);
+#else
 	m_SwapChainResizeBuffersHook->uninstall();
 	HRESULT ret = chain->ResizeBuffers(
 		BufferCount, Width, Height, NewFormat, SwapChainFlags);
 	m_SwapChainResizeBuffersHook->install();
+#endif // USE_MINHOOK
 
 	// Forward to the context handler (Part 2)
 	if(hook != NULL)

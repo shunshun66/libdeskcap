@@ -28,6 +28,9 @@
 // Function stubs
 
 // IDirect3DDevice9::Present()
+extern "C" typedef HRESULT (STDMETHODCALLTYPE *DevicePresent_t)(
+	IDirect3DDevice9 *device, const RECT *pSourceRect, const RECT *pDestRect,
+	HWND hDestWindowOverride, const RGNDATA *pDirtyRegion);
 extern "C" static HRESULT STDMETHODCALLTYPE DevicePresentHook(
 	IDirect3DDevice9 *device, const RECT *pSourceRect, const RECT *pDestRect,
 	HWND hDestWindowOverride, const RGNDATA *pDirtyRegion)
@@ -38,6 +41,8 @@ extern "C" static HRESULT STDMETHODCALLTYPE DevicePresentHook(
 }
 
 // IDirect3DDevice9::EndScene()
+extern "C" typedef HRESULT (STDMETHODCALLTYPE *DeviceEndScene_t)(
+	IDirect3DDevice9 *device);
 extern "C" static HRESULT STDMETHODCALLTYPE DeviceEndSceneHook(
 	IDirect3DDevice9 *device)
 {
@@ -46,6 +51,8 @@ extern "C" static HRESULT STDMETHODCALLTYPE DeviceEndSceneHook(
 }
 
 // IDirect3DDevice9::Reset()
+extern "C" typedef HRESULT (STDMETHODCALLTYPE *DeviceReset_t)(
+	IDirect3DDevice9 *device, D3DPRESENT_PARAMETERS *pPresentationParameters);
 extern "C" static HRESULT STDMETHODCALLTYPE DeviceResetHook(
 	IDirect3DDevice9 *device, D3DPRESENT_PARAMETERS *pPresentationParameters)
 {
@@ -54,13 +61,20 @@ extern "C" static HRESULT STDMETHODCALLTYPE DeviceResetHook(
 }
 
 // IDirect3DDevice9::Release()
-extern "C" static ULONG STDMETHODCALLTYPE DeviceReleaseHook(IUnknown *unknown)
+extern "C" typedef ULONG (STDMETHODCALLTYPE *DeviceRelease_t)(
+	IUnknown *unknown);
+extern "C" static ULONG STDMETHODCALLTYPE DeviceReleaseHook(
+	IUnknown *unknown)
 {
 	D3D9HookManager *mgr = D3D9HookManager::getSingleton();
 	return mgr->DeviceReleaseHooked(unknown);
 }
 
 // IDirect3DDevice9Ex::PresentEx()
+extern "C" typedef HRESULT (STDMETHODCALLTYPE *DeviceExPresentEx_t)(
+	IDirect3DDevice9Ex *deviceEx, const RECT *pSourceRect,
+	const RECT *pDestRect, HWND hDestWindowOverride,
+	const RGNDATA *pDirtyRegion, DWORD dwFlags);
 extern "C" static HRESULT STDMETHODCALLTYPE DeviceExPresentExHook(
 	IDirect3DDevice9Ex *deviceEx, const RECT *pSourceRect,
 	const RECT *pDestRect, HWND hDestWindowOverride,
@@ -73,6 +87,10 @@ extern "C" static HRESULT STDMETHODCALLTYPE DeviceExPresentExHook(
 }
 
 // IDirect3DDevice9Ex::ResetEx()
+extern "C" typedef HRESULT (STDMETHODCALLTYPE *DeviceExResetEx_t)(
+	IDirect3DDevice9Ex *deviceEx,
+	D3DPRESENT_PARAMETERS *pPresentationParameters,
+	D3DDISPLAYMODEEX *pFullscreenDisplayMode);
 extern "C" static HRESULT STDMETHODCALLTYPE DeviceExResetExHook(
 	IDirect3DDevice9Ex *deviceEx,
 	D3DPRESENT_PARAMETERS *pPresentationParameters,
@@ -84,6 +102,9 @@ extern "C" static HRESULT STDMETHODCALLTYPE DeviceExResetExHook(
 }
 
 // IDirect3DSwapChain9::Present()
+extern "C" typedef HRESULT (STDMETHODCALLTYPE *SwapChainPresent_t)(
+	IDirect3DSwapChain9 *chain, const RECT *pSourceRect, const RECT *pDestRect,
+	HWND hDestWindowOverride, const RGNDATA *pDirtyRegion, DWORD dwFlags);
 extern "C" static HRESULT STDMETHODCALLTYPE SwapChainPresentHook(
 	IDirect3DSwapChain9 *chain, const RECT *pSourceRect, const RECT *pDestRect,
 	HWND hDestWindowOverride, const RGNDATA *pDirtyRegion, DWORD dwFlags)
@@ -420,10 +441,16 @@ HRESULT D3D9HookManager::DevicePresentHooked(
 		hook->processBufferSwap();
 
 	// Forward to the real function
+#if USE_MINHOOK
+	HRESULT ret =
+		((DevicePresent_t)m_DevicePresentHook->getTrampoline())(
+		device, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+#else
 	m_DevicePresentHook->uninstall();
 	HRESULT ret = device->Present(
 		pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
 	m_DevicePresentHook->install();
+#endif // USE_MINHOOK
 
 	m_hookMutex.unlock();
 	return ret;
@@ -512,9 +539,15 @@ endSceneFailed1:
 	}
 
 	// Forward to the real function
+#if USE_MINHOOK
+	HRESULT ret =
+		((DeviceEndScene_t)m_DeviceEndSceneHook->getTrampoline())(
+		device);
+#else
 	m_DeviceEndSceneHook->uninstall();
 	HRESULT ret = device->EndScene();
 	m_DeviceEndSceneHook->install();
+#endif // USE_MINHOOK
 
 	m_hookMutex.unlock();
 	return ret;
@@ -533,9 +566,15 @@ HRESULT D3D9HookManager::DeviceResetHooked(
 		hook->processResetBefore();
 
 	// Forward to the real function
+#if USE_MINHOOK
+	HRESULT ret =
+		((DeviceReset_t)m_DeviceResetHook->getTrampoline())(
+		device, pPresentationParameters);
+#else
 	m_DeviceResetHook->uninstall();
 	HRESULT ret = device->Reset(pPresentationParameters);
 	m_DeviceResetHook->install();
+#endif // USE_MINHOOK
 
 	// Forward to the context handler (Part 2)
 	if(hook != NULL)
@@ -551,9 +590,15 @@ ULONG D3D9HookManager::DeviceReleaseHooked(IUnknown *unknown)
 	m_hookMutex.lock();
 
 	// Will the device be deleted this call?
+#if USE_MINHOOK
+	unknown->AddRef();
+	ULONG refs =
+		((DeviceRelease_t)m_DeviceReleaseHook->getTrampoline())(unknown);
+#else
 	m_DeviceReleaseHook->uninstall();
 	unknown->AddRef();
 	ULONG refs = unknown->Release();
+#endif // USE_MINHOOK
 	HRESULT ret;
 	if(refs == 1) {
 		// Device is about to be deleted, clean up
@@ -596,22 +641,35 @@ ULONG D3D9HookManager::DeviceReleaseHooked(IUnknown *unknown)
 		// If `Release()` is called and we have no other known contexts left
 		// then the program is most likely shutting down. Use this opportunity
 		// to cleanly unhook everything.
-		if(m_hooks.size() <= 0) {
+		// FIXME: This crashes some users so we just disable it for now
+		if(false) { //m_hooks.size() <= 0) {
 			unhook(); // Uninstalls and deletes our hooks
 
 			// Forward to the real function
 			ret = device->Release();
 		} else {
 			// Forward to the real function
+#if USE_MINHOOK
+			ret =
+				((DeviceRelease_t)m_DeviceReleaseHook->getTrampoline())(
+				unknown);
+#else
 			ret = device->Release();
 			m_DeviceReleaseHook->install();
+#endif // USE_MINHOOK
 		}
 	} else {
 		// Device is not about to be deleted
 
 		// Forward to the real function
+#if USE_MINHOOK
+		ret =
+			((DeviceRelease_t)m_DeviceReleaseHook->getTrampoline())(
+			unknown);
+#else
 		ret = unknown->Release();
 		m_DeviceReleaseHook->install();
+#endif // USE_MINHOOK
 	}
 
 	m_hookMutex.unlock();
@@ -637,16 +695,27 @@ HRESULT D3D9HookManager::DeviceExPresentExHooked(
 	}
 	if(device != NULL) {
 		// Release our queried object without calling our callback
+#if USE_MINHOOK
+		((DeviceRelease_t)m_DeviceReleaseHook->getTrampoline())(
+			device);
+#else
 		m_DeviceReleaseHook->uninstall();
 		device->Release();
 		m_DeviceReleaseHook->install();
+#endif // USE_MINHOOK
 	}
 
 	// Forward to the real function
+#if USE_MINHOOK
+	HRESULT ret = ((DeviceExPresentEx_t)m_DeviceExPresentExHook->getTrampoline())(
+		deviceEx, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion,
+		dwFlags);
+#else
 	m_DeviceExPresentExHook->uninstall();
 	HRESULT ret = deviceEx->PresentEx(
 		pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
 	m_DeviceExPresentExHook->install();
+#endif // USE_MINHOOK
 
 	m_hookMutex.unlock();
 	//HookLog(stringf("IDirect3DDevice9Ex::PresentEx(%p) exit", deviceEx));
@@ -673,19 +742,28 @@ HRESULT D3D9HookManager::DeviceExResetExHooked(
 	}
 
 	// Forward to the real function
+#if USE_MINHOOK
+	HRESULT ret = ((DeviceExResetEx_t)m_DeviceExResetExHook->getTrampoline())(
+		deviceEx, pPresentationParameters, pFullscreenDisplayMode);
+#else
 	m_DeviceExResetExHook->uninstall();
 	HRESULT ret = deviceEx->ResetEx(
 		pPresentationParameters, pFullscreenDisplayMode);
 	m_DeviceExResetExHook->install();
+#endif // USE_MINHOOK
 
 	// Forward to the context handler (Part 2)
 	if(hook != NULL)
 		hook->processResetBefore();
 	if(device != NULL) {
 		// Release our queried object without calling our callback
+#if USE_MINHOOK
+		((DeviceRelease_t)m_DeviceReleaseHook->getTrampoline())(device);
+#else
 		m_DeviceReleaseHook->uninstall();
 		device->Release();
 		m_DeviceReleaseHook->install();
+#endif // USE_MINHOOK
 	}
 
 	m_hookMutex.unlock();
@@ -710,15 +788,25 @@ HRESULT D3D9HookManager::SwapChainPresentHooked(
 			data->hook->processBufferSwap();
 
 		// Release our queried object without calling our callback
+#if USE_MINHOOK
+		((DeviceRelease_t)m_DeviceReleaseHook->getTrampoline())(device);
+#else
 		m_DeviceReleaseHook->uninstall();
 		device->Release();
 		m_DeviceReleaseHook->install();
+#endif // USE_MINHOOK
 
 		// Forward to the real function
+#if USE_MINHOOK
+		ret = ((SwapChainPresent_t)(data->SwapChainPresentHook)->getTrampoline())(
+			chain, pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion,
+			dwFlags);
+#else
 		data->SwapChainPresentHook->uninstall();
 		ret = chain->Present(pSourceRect, pDestRect, hDestWindowOverride,
 			pDirtyRegion, dwFlags);
 		data->SwapChainPresentHook->install();
+#endif // USE_MINHOOK
 	} else {
 		// We don't know which hook object to uninstall so we can't forward to
 		// the real function, FIXME?

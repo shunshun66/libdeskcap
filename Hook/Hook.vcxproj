@@ -163,7 +163,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>glew32mxsd.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(BOOST_DIR)\lib\Win32;$(GLEW_DIR)\lib\Debug MX\Win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\MinHook\lib\Debug;$(BOOST_DIR)\lib\Win32;$(GLEW_DIR)\lib\Debug MX\Win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <MinimumRequiredVersion>6.0</MinimumRequiredVersion>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
@@ -191,7 +191,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>glew32mxsd.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(BOOST_DIR)\lib\x64;$(GLEW_DIR)\lib\Debug MX\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\MinHook\lib\Debug;$(BOOST_DIR)\lib\x64;$(GLEW_DIR)\lib\Debug MX\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <MinimumRequiredVersion>6.0</MinimumRequiredVersion>
       <ImportLibrary>$(OutDir)..\lib\$(TargetName).lib</ImportLibrary>
@@ -225,7 +225,7 @@
       <OptimizeReferences>
       </OptimizeReferences>
       <AdditionalDependencies>glew32mxs.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(BOOST_DIR)\lib\Win32;$(GLEW_DIR)\lib\Release MX\Win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\MinHook\lib\Release;$(BOOST_DIR)\lib\Win32;$(GLEW_DIR)\lib\Release MX\Win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <MinimumRequiredVersion>6.0</MinimumRequiredVersion>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
@@ -262,7 +262,7 @@
       <OptimizeReferences>
       </OptimizeReferences>
       <AdditionalDependencies>glew32mxs.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(BOOST_DIR)\lib\x64;$(GLEW_DIR)\lib\Release MX\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\MinHook\lib\Release;$(BOOST_DIR)\lib\x64;$(GLEW_DIR)\lib\Release MX\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
       <MinimumRequiredVersion>6.0</MinimumRequiredVersion>
       <ImportLibrary>$(OutDir)..\lib\$(TargetName).lib</ImportLibrary>

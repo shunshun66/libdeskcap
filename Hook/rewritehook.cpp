@@ -21,6 +21,91 @@
 #include "../Common/interprocesslog.h"
 #include <windows.h>
 
+//=============================================================================
+#if USE_MINHOOK
+
+RewriteHook::RewriteHook(void *funcToHook, void *funcToJumpTo)
+	: m_funcToHook(funcToHook)
+	, m_funcTrampoline(NULL)
+	, m_isHooked(false)
+	, m_isHookable(false)
+{
+	MH_STATUS ret = MH_CreateHook(funcToHook, funcToJumpTo, &m_funcTrampoline);
+	if(ret == MH_OK)
+		m_isHookable = true;
+	else {
+		HookLog2(InterprocessLog::Warning,
+			stringf("Failed to create MinHook hook. Reason = %u",
+			ret));
+	}
+}
+
+RewriteHook::~RewriteHook()
+{
+	if(m_isHooked)
+		uninstall();
+
+	if(m_isHookable) {
+		MH_STATUS ret = MH_RemoveHook(m_funcToHook);
+		if(ret != MH_OK) {
+			HookLog2(InterprocessLog::Warning,
+				stringf("Failed to remove MinHook hook. Reason = %u",
+				ret));
+		}
+	}
+}
+
+/// <summary>
+/// Installs the hook.
+/// </summary>
+/// <returns>True if the hook is installed.</returns>
+bool RewriteHook::install()
+{
+	return installUninstall(true);
+}
+
+/// <summary>
+/// Uninstalls the hook.
+/// </summary>
+/// <returns>True if the hook is uninstalled.</returns>
+bool RewriteHook::uninstall()
+{
+	return installUninstall(false);
+}
+
+bool RewriteHook::installUninstall(bool isInstall)
+{
+	if(!m_isHookable)
+		return false;
+	if(m_isHooked == isInstall)
+		return true; // Already hooked
+
+	if(isInstall) {
+		MH_STATUS ret = MH_EnableHook(m_funcToHook);
+		if(ret != MH_OK) {
+			HookLog2(InterprocessLog::Warning,
+				stringf("Failed to enable MinHook hook. Reason = %u",
+				ret));
+			return false;
+		}
+	} else {
+		MH_STATUS ret = MH_DisableHook(m_funcToHook);
+		if(ret != MH_OK) {
+			HookLog2(InterprocessLog::Warning,
+				stringf("Failed to disable MinHook hook. Reason = %u",
+				ret));
+			return false;
+		}
+	}
+
+	m_isHooked = isInstall;
+	return true;
+}
+
+//=============================================================================
+#else // USE_MINHOOK
+//=============================================================================
+
 // Settings for when and how `VirtualProtect()` is called. This method is very
 // dangerous so if any of these settings are changed make sure you do VERY good
 // testing.
@@ -104,7 +189,7 @@ bool RewriteHook::installUninstall(bool isInstall)
 #endif // DO_BRUTE_FORCE_VIRTUAL_PROTECT || DO_REVERT_VIRTUAL_PROTECT
 
 	if(isInstall) {
-		//HookLog("Installing hook");
+		//HookLog(stringf("Installing hook %p", m_funcToHook));
 
 		// Take a copy of the existing code
 		memcpy(m_oldCode, m_funcToHook, m_codeSize);
@@ -112,7 +197,7 @@ bool RewriteHook::installUninstall(bool isInstall)
 		// Replace the existing code with our own code
 		memcpy(m_funcToHook, m_newCode, m_codeSize);
 	} else {
-		//HookLog("Uninstalling hook");
+		//HookLog(stringf("Uninstalling hook %p", m_funcToHook));
 
 		// Replace the existing code with the original code
 		memcpy(m_funcToHook, m_oldCode, m_codeSize);
@@ -196,3 +281,6 @@ void RewriteHook::generateCode()
 		*((int32_t *)&m_newCode[1]) = relAddr;
 	}
 }
+
+//=============================================================================
+#endif // USE_MINHOOK

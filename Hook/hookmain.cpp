@@ -20,6 +20,7 @@
 #include "d3dstatics.h"
 #include "dxgihookmanager.h"
 #include "glhookmanager.h"
+#include "rewritehook.h"
 #include "../Common/boostincludes.h"
 #include "../Common/datatypes.h"
 #include "../Common/interprocesslog.h"
@@ -160,6 +161,16 @@ int HookMain::exec(void *param)
 		m_exeFilename = strList.back();
 	}
 
+#if USE_MINHOOK
+	MH_STATUS ret = MH_Initialize();
+	if(ret != MH_OK) {
+		HookLog2(InterprocessLog::Warning,
+			stringf("Failed to initialize MinHook. Reason = %u",
+			ret));
+		m_exitMainLoop = true;
+	}
+#endif // USE_MINHOOK
+
 	// This thread's only purpose is to constantly attempt hooking and to make
 	// sure that the library unloads itself when the main application quits.
 	// The actual transfer of data is done in the hook callbacks.
@@ -182,6 +193,15 @@ int HookMain::exec(void *param)
 			exit(0);
 #endif // DEBUG_TERMINATE_WITH_AUTO_UNHOOK
 	}
+
+#if USE_MINHOOK
+	ret = MH_Uninitialize();
+	if(ret != MH_OK) {
+		HookLog2(InterprocessLog::Warning,
+			stringf("Failed to uninitialize MinHook. Reason = %u",
+			ret));
+	}
+#endif // USE_MINHOOK
 
 	// Unregister dummy window class
 	UnregisterClass(DUMMY_WIN_CLASS, s_hinstDll);

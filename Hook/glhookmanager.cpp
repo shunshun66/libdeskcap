@@ -25,6 +25,10 @@
 // Must be after <windows.h>
 #include "glstatics.h"
 
+#if USE_MINHOOK
+#error MinHook causes Minecraft to freeze on startup.
+#endif // USE_MINHOOK
+
 //=============================================================================
 // Function stubs
 
@@ -34,6 +38,7 @@ GLEWContext *glewGetContext()
 	return mgr->getCurrentGLEWContext();
 }
 
+extern "C" typedef BOOL (WINAPI *SwapBuffers_t)(HDC hdc);
 extern "C" static BOOL WINAPI SwapBuffersHook(HDC hdc)
 {
 	// Identical to `wglSwapBuffers()`
@@ -41,6 +46,7 @@ extern "C" static BOOL WINAPI SwapBuffersHook(HDC hdc)
 	return mgr->wglSwapBuffersHooked(false, hdc);
 }
 
+extern "C" typedef BOOL (WINAPI *wglSwapBuffers_t)(HDC hdc);
 extern "C" static BOOL WINAPI wglSwapBuffersHook(HDC hdc)
 {
 	// Identical to `SwapBuffers()`
@@ -48,12 +54,16 @@ extern "C" static BOOL WINAPI wglSwapBuffersHook(HDC hdc)
 	return mgr->wglSwapBuffersHooked(true, hdc);
 }
 
-extern "C" static BOOL WINAPI wglSwapLayerBuffersHook(HDC hdc, UINT fuPlanes)
+extern "C" typedef BOOL (WINAPI *wglSwapLayerBuffers_t)(
+	HDC hdc, UINT fuPlanes);
+extern "C" static BOOL WINAPI wglSwapLayerBuffersHook(
+	HDC hdc, UINT fuPlanes)
 {
 	GLHookManager *mgr = GLHookManager::getSingleton();
 	return mgr->wglSwapLayerBuffersHooked(hdc, fuPlanes);
 }
 
+extern "C" typedef BOOL (WINAPI *wglDeleteContext_t)(HGLRC hglrc);
 extern "C" static BOOL WINAPI wglDeleteContextHook(HGLRC hglrc)
 {
 	GLHookManager *mgr = GLHookManager::getSingleton();
@@ -368,6 +378,12 @@ BOOL GLHookManager::wglSwapBuffersHooked(bool wasWgl, HDC hdc)
 	// likely aliases of each other and we don't want to process the same frame
 	// twice.
 	BOOL ret = FALSE;
+#if USE_MINHOOK
+	if(wasWgl)
+		ret = ((wglSwapBuffers_t)m_wglSwapBuffersHook->getTrampoline())(hdc);
+	else
+		ret = ((SwapBuffers_t)m_SwapBuffersHook->getTrampoline())(hdc);
+#else
 	m_wglSwapBuffersHook->uninstall();
 	m_SwapBuffersHook->uninstall();
 	if(wasWgl)
@@ -376,6 +392,7 @@ BOOL GLHookManager::wglSwapBuffersHooked(bool wasWgl, HDC hdc)
 		ret = SwapBuffers(hdc);
 	m_SwapBuffersHook->install();
 	m_wglSwapBuffersHook->install();
+#endif // USE_MINHOOK
 
 	m_hookMutex.unlock();
 	return ret;
@@ -391,9 +408,15 @@ BOOL GLHookManager::wglSwapLayerBuffersHooked(HDC hdc, UINT fuPlanes)
 	processBufferSwap(hdc);
 
 	// Forward to the real function
+#if USE_MINHOOK
+	BOOL ret =
+		((wglSwapLayerBuffers_t)m_wglSwapLayerBuffersHook->getTrampoline())(
+		hdc, fuPlanes);
+#else
 	m_wglSwapLayerBuffersHook->uninstall();
 	BOOL ret = wglSwapLayerBuffers_mishira(hdc, fuPlanes);
 	m_wglSwapLayerBuffersHook->install();
+#endif // USE_MINHOOK
 
 	m_hookMutex.unlock();
 	return ret;
@@ -422,17 +445,23 @@ BOOL GLHookManager::wglDeleteContextHooked(HGLRC hglrc)
 	// If `wglDeleteContext()` is called and we have no other known contexts
 	// left then the program is most likely shutting down. Use this opportunity
 	// to cleanly unhook everything.
+	// FIXME: This crashes some users so we just disable it for now
 	BOOL ret = TRUE;
-	if(m_hooks.size() <= 0) {
+	if(false) { //m_hooks.size() <= 0) {
 		// Forward to the real function
 		m_wglDeleteContextHook->uninstall();
 		ret = wglDeleteContext_mishira(hglrc);
 		unhook(); // Uninstalls and deletes our hooks
 	} else {
 		// Forward to the real function
+#if USE_MINHOOK
+		ret = ((wglDeleteContext_t)m_wglDeleteContextHook->getTrampoline())(
+			hglrc);
+#else
 		m_wglDeleteContextHook->uninstall();
 		ret = wglDeleteContext_mishira(hglrc);
 		m_wglDeleteContextHook->install();
+#endif // USE_MINHOOK
 	}
 
 	m_hookMutex.unlock();

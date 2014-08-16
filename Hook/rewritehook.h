@@ -18,6 +18,62 @@
 #ifndef REWRITEHOOK_H
 #define REWRITEHOOK_H
 
+// Set to `1` to use the Minhook library. We use MinHook v1.3-beta3 compiled
+// manually using VC11 solution and modifying the runtime library to use DLLs.
+// https://github.com/TsudaKageyu/minhook
+#define USE_MINHOOK 0
+
+#if USE_MINHOOK
+
+#include "../MinHook/include/MinHook.h"
+#if defined _M_X64
+#pragma comment(lib, "libMinHook.x64.lib")
+#elif defined _M_IX86
+#pragma comment(lib, "libMinHook.x86.lib")
+#endif
+
+//=============================================================================
+/// <summary>
+/// Hooks a function that already exists in memory by rewriting the executable
+/// code to simply jump to our new function.
+/// </summary>
+class RewriteHook
+{
+private: // Members -----------------------------------------------------------
+	void *	m_funcToHook;
+	void *	m_funcTrampoline;
+	bool	m_isHookable;
+	bool	m_isHooked;
+
+public: // Constructor/destructor ---------------------------------------------
+	RewriteHook(void *funcToHook, void *funcToJumpTo);
+	virtual	~RewriteHook();
+
+public: // Methods ------------------------------------------------------------
+	bool	isHooked() const;
+	void *	getTrampoline() const;
+
+	bool	install();
+	bool	uninstall();
+
+private:
+	bool	installUninstall(bool isInstall);
+	void	generateCode();
+};
+//=============================================================================
+
+inline bool RewriteHook::isHooked() const
+{
+	return m_isHooked;
+}
+
+inline void *RewriteHook::getTrampoline() const
+{
+	return m_funcTrampoline;
+}
+
+#else // USE_MINHOOK
+
 //=============================================================================
 /// <summary>
 /// Hooks a function that already exists in memory by rewriting the executable
@@ -86,5 +142,7 @@ inline bool RewriteHook::isHooked() const
 {
 	return m_isHooked;
 }
+
+#endif // USE_MINHOOK
 
 #endif // REWRITEHOOK_H

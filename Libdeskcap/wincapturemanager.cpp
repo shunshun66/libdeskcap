@@ -422,6 +422,7 @@ bool WinCaptureManager::isHookBlacklisted(HWND hwnd) const
 
 	// Black list many common application that are unlikely to ever need
 	// accelerated capture yet currently crash sometimes due to Mishira. FIXME
+#if 0
 	if(!filename.compare(QStringLiteral("iexplore.exe"), Qt::CaseInsensitive))
 		return true;
 	if(!filename.compare(QStringLiteral("chrome.exe"), Qt::CaseInsensitive))
@@ -452,6 +453,7 @@ bool WinCaptureManager::isHookBlacklisted(HWND hwnd) const
 		return true;
 	if(!filename.compare(QStringLiteral("amarectv.exe"), Qt::CaseInsensitive))
 		return true;
+#endif // 0
 
 	// Never hook ourselves as we know we'll never need accelerated capture of
 	// our own windows
