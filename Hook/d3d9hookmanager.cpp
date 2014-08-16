@@ -642,7 +642,7 @@ ULONG D3D9HookManager::DeviceReleaseHooked(IUnknown *unknown)
 		// then the program is most likely shutting down. Use this opportunity
 		// to cleanly unhook everything.
 		// FIXME: This crashes some users so we just disable it for now
-		if(false) { //m_hooks.size() <= 0) {
+		if(false) { //if(m_hooks.size() <= 0) {
 			unhook(); // Uninstalls and deletes our hooks
 
 			// Forward to the real function

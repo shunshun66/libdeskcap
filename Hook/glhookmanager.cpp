@@ -447,7 +447,7 @@ BOOL GLHookManager::wglDeleteContextHooked(HGLRC hglrc)
 	// to cleanly unhook everything.
 	// FIXME: This crashes some users so we just disable it for now
 	BOOL ret = TRUE;
-	if(false) { //m_hooks.size() <= 0) {
+	if(false) { //if(m_hooks.size() <= 0) {
 		// Forward to the real function
 		m_wglDeleteContextHook->uninstall();
 		ret = wglDeleteContext_mishira(hglrc);
