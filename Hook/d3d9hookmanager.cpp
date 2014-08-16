@@ -596,7 +596,8 @@ ULONG D3D9HookManager::DeviceReleaseHooked(IUnknown *unknown)
 		// If `Release()` is called and we have no other known contexts left
 		// then the program is most likely shutting down. Use this opportunity
 		// to cleanly unhook everything.
-		if(m_hooks.size() <= 0) {
+		// FIXME: This crashes some users so we just disable it for now
+		if(false) { //if(m_hooks.size() <= 0) {
 			unhook(); // Uninstalls and deletes our hooks
 
 			// Forward to the real function
