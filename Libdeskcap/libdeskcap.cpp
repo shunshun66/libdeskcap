@@ -16,9 +16,19 @@
 //*****************************************************************************
 
 #include "include/libdeskcap.h"
+#include <Libvidgfx/libvidgfx.h>
 #include <iostream>
 #ifdef Q_OS_WIN
 #include <windows.h>
+#endif
+
+//=============================================================================
+// Validate library versions
+
+#if LIBVIDGFX_VER_MAJOR != 0 || \
+	LIBVIDGFX_VER_MINOR != 5 || \
+	LIBVIDGFX_VER_BUILD != 0
+#error Mismatched Libvidgfx version!
 #endif
 
 //=============================================================================
