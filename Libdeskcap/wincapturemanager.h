@@ -24,7 +24,6 @@
 #include <QtCore/QVector>
 #include <windows.h>
 
-class GraphicsContext;
 class WinCaptureManager;
 class WinCaptureObject;
 class WinDupCapture;
@@ -142,8 +141,8 @@ private:
 
 	public
 Q_SLOTS: // Slots -------------------------------------------------------------
-	void	graphicsContextInitialized(GraphicsContext *gfx);
-	void	graphicsContextDestroyed(GraphicsContext *gfx);
+	void	graphicsContextInitialized(VidgfxContext *gfx);
+	void	graphicsContextDestroyed(VidgfxContext *gfx);
 
 	private
 Q_SLOTS:

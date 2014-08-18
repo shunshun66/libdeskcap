@@ -19,12 +19,12 @@
 #define WINHOOKCAPTURE_H
 
 #include "include/captureobject.h"
+#include <Libvidgfx/libvidgfx.h>
 #include <QtCore/QSize>
 #include <QtCore/QObject>
 #include <windows.h>
 
 class CaptureSharedSegment;
-class GraphicsContext;
 class Texture;
 
 //=============================================================================
@@ -54,8 +54,8 @@ public: // Methods ------------------------------------------------------------
 	void		release();
 
 	void		queuedFrameEvent(uint fNum, int numDropped);
-	void		initializeResources(GraphicsContext *gfx);
-	void		destroyResources(GraphicsContext *gfx);
+	void		initializeResources(VidgfxContext *gfx);
+	void		destroyResources(VidgfxContext *gfx);
 
 	QSize		getSize() const;
 	Texture *	getTexture() const;

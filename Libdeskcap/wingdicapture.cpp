@@ -61,8 +61,8 @@ WinGDICapture::WinGDICapture(HWND hwnd, HMONITOR hMonitor)
 			.arg(title);
 	}
 
-	GraphicsContext *gfx = CaptureManager::getManager()->getGraphicsContext();
-	if(gfx != NULL && gfx->isValid())
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	if(vidgfx_context_is_valid(gfx))
 		initializeResources(gfx);
 }
 
@@ -88,8 +88,8 @@ WinGDICapture::~WinGDICapture()
 			.arg(title);
 	}
 
-	GraphicsContext *gfx = CaptureManager::getManager()->getGraphicsContext();
-	if(gfx != NULL && gfx->isValid())
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	if(vidgfx_context_is_valid(gfx))
 		destroyResources(gfx);
 
 	ReleaseDC(m_hwnd, m_hdc);
@@ -199,7 +199,7 @@ void WinGDICapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 	}
 }
 
-void WinGDICapture::initializeResources(GraphicsContext *gfx)
+void WinGDICapture::initializeResources(VidgfxContext *gfx)
 {
 	// Because CaptureObjects are referenced by both the CaptureManager and
 	// scene layers it is possible for us to receive two initialize signals
@@ -224,8 +224,8 @@ void WinGDICapture::updateTexture()
 {
 	if(!m_resourcesInitialized)
 		return; // We may receive ticks before being initialized
-	GraphicsContext *gfx = CaptureManager::getManager()->getGraphicsContext();
-	if(gfx == NULL || !gfx->isValid())
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	if(!vidgfx_context_is_valid(gfx))
 		return;
 
 	// Determine the window size
@@ -246,7 +246,7 @@ void WinGDICapture::updateTexture()
 
 	// Has the window size changed? If so we need to recreate the texture
 	if(m_texture != NULL && m_texture->getSize() != size) {
-		gfx->deleteTexture(m_texture);
+		vidgfx_context_destroy_tex(gfx, m_texture);
 		m_texture = NULL;
 	}
 
@@ -287,14 +287,14 @@ void WinGDICapture::updateTexture()
 	}
 }
 
-void WinGDICapture::destroyResources(GraphicsContext *gfx)
+void WinGDICapture::destroyResources(VidgfxContext *gfx)
 {
 	if(!m_resourcesInitialized)
 		return;
 	m_resourcesInitialized = false;
 
 	if(m_texture != NULL) {
-		gfx->deleteTexture(m_texture);
+		vidgfx_context_destroy_tex(gfx, m_texture);
 		m_texture = NULL;
 	}
 	m_failedOnce = false;

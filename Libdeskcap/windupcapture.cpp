@@ -48,8 +48,8 @@ WinDupCapture::WinDupCapture(HMONITOR hMonitor)
 			.arg(info->friendlyName);
 	}
 
-	GraphicsContext *gfx = mgr->getGraphicsContext();
-	if(gfx != NULL && gfx->isValid())
+	VidgfxContext *gfx = mgr->getGraphicsContext();
+	if(vidgfx_context_is_valid(gfx))
 		initializeResources(gfx);
 }
 
@@ -64,8 +64,8 @@ WinDupCapture::~WinDupCapture()
 			.arg(info->friendlyName);
 	}
 
-	GraphicsContext *gfx = mgr->getGraphicsContext();
-	if(gfx != NULL && gfx->isValid())
+	VidgfxContext *gfx = mgr->getGraphicsContext();
+	if(vidgfx_context_is_valid(gfx))
 		destroyResources(gfx);
 }
 
@@ -90,8 +90,8 @@ void WinDupCapture::acquireDuplicator()
 	}
 
 	// WARNING: We assume that the graphics context is valid
-	GraphicsContext *gfx = mgr->getGraphicsContext();
-	if(gfx == NULL || !gfx->isValid()) {
+	VidgfxContext *gfx = mgr->getGraphicsContext();
+	if(!vidgfx_context_is_valid(gfx)) {
 		capLog(LOG_CAT, CapLog::Warning) << QStringLiteral(
 			"Error creating duplicator capture of monitor. Reason = Context not valid");
 		return;
@@ -153,8 +153,8 @@ void WinDupCapture::release()
 
 void WinDupCapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 {
-	GraphicsContext *gfx = CaptureManager::getManager()->getGraphicsContext();
-	if(gfx == NULL || !gfx->isValid())
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	if(!vidgfx_context_is_valid(gfx))
 		return;
 	D3DContext *d3dGfx = static_cast<D3DContext *>(gfx);
 	if(m_duplicator == NULL && m_attemptReaquire) {
@@ -220,7 +220,7 @@ void WinDupCapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 	}
 
 	// Copy the acquired resource to another texture
-	if(!gfx->copyTextureData(m_texture, frameTex, QPoint(0, 0),
+	if(!vidgfx_context_copy_tex_data(gfx, m_texture, frameTex, QPoint(0, 0),
 		QRect(QPoint(0, 0), frameTex->getSize())))
 	{
 		// Failed to copy, don't log as it'll spam
@@ -228,7 +228,7 @@ void WinDupCapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 	}
 
 exitFrameEvent2:
-	gfx->deleteTexture(frameTex);
+	vidgfx_context_destroy_tex(gfx, frameTex);
 	frameTex = NULL;
 exitFrameEvent1:
 	// Release the acquired resource so the OS can copy to the next frame to it
@@ -236,7 +236,7 @@ exitFrameEvent1:
 	m_duplicator->ReleaseFrame();
 }
 
-void WinDupCapture::initializeResources(GraphicsContext *gfx)
+void WinDupCapture::initializeResources(VidgfxContext *gfx)
 {
 	// Because CaptureObjects are referenced by both the CaptureManager and
 	// scene layers it is possible for us to receive two initialize signals
@@ -269,8 +269,8 @@ void WinDupCapture::updateTexture(Texture *frameTex)
 		return;
 	if(!m_resourcesInitialized)
 		return; // We may receive ticks before being initialized
-	GraphicsContext *gfx = CaptureManager::getManager()->getGraphicsContext();
-	if(gfx == NULL || !gfx->isValid())
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	if(!vidgfx_context_is_valid(gfx))
 		return;
 	D3DContext *d3dGfx = static_cast<D3DContext *>(gfx);
 	if(frameTex == NULL || !frameTex->isValid())
@@ -278,7 +278,7 @@ void WinDupCapture::updateTexture(Texture *frameTex)
 
 	// Has the texture size changed? If so we need to recreate the texture
 	if(m_texture != NULL && m_texture->getSize() != frameTex->getSize()) {
-		gfx->deleteTexture(m_texture);
+		vidgfx_context_destroy_tex(gfx, m_texture);
 		m_texture = NULL;
 	}
 
@@ -302,14 +302,14 @@ void WinDupCapture::updateTexture(Texture *frameTex)
 	}
 }
 
-void WinDupCapture::destroyResources(GraphicsContext *gfx)
+void WinDupCapture::destroyResources(VidgfxContext *gfx)
 {
 	if(!m_resourcesInitialized)
 		return;
 	m_resourcesInitialized = false;
 
 	if(m_texture != NULL) {
-		gfx->deleteTexture(m_texture);
+		vidgfx_context_destroy_tex(gfx, m_texture);
 		m_texture = NULL;
 	}
 	m_failedOnce = false;

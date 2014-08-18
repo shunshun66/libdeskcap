@@ -1155,9 +1155,9 @@ void WinCaptureManager::queuedFrameEventImpl(uint frameNum, int numDropped)
 		m_hookObjects.at(i)->queuedFrameEvent(frameNum, numDropped);
 }
 
-void WinCaptureManager::graphicsContextInitialized(GraphicsContext *gfx)
+void WinCaptureManager::graphicsContextInitialized(VidgfxContext *gfx)
 {
-	if(gfx == NULL || !gfx->isValid())
+	if(!vidgfx_context_is_valid(gfx))
 		return; // Context must exist and be useable
 
 	// Notify capture objects
@@ -1169,9 +1169,9 @@ void WinCaptureManager::graphicsContextInitialized(GraphicsContext *gfx)
 		m_dupObjects.at(i)->initializeResources(gfx);
 }
 
-void WinCaptureManager::graphicsContextDestroyed(GraphicsContext *gfx)
+void WinCaptureManager::graphicsContextDestroyed(VidgfxContext *gfx)
 {
-	if(gfx == NULL || !gfx->isValid())
+	if(!vidgfx_context_is_valid(gfx))
 		return; // Context must exist and be useable
 
 	// Notify capture objects

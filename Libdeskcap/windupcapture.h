@@ -19,11 +19,11 @@
 #define WINDUPCAPTURE_H
 
 #include "include/captureobject.h"
+#include <Libvidgfx/libvidgfx.h>
 #include <QtCore/QSize>
 #include <QtCore/QObject>
 #include <windows.h>
 
-class GraphicsContext;
 class Texture;
 struct IDXGIOutputDuplication;
 
@@ -53,8 +53,8 @@ public: // Methods ------------------------------------------------------------
 	void		release();
 
 	void		lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec);
-	void		initializeResources(GraphicsContext *gfx);
-	void		destroyResources(GraphicsContext *gfx);
+	void		initializeResources(VidgfxContext *gfx);
+	void		destroyResources(VidgfxContext *gfx);
 
 	QSize		getSize() const;
 	Texture *	getTexture() const;

@@ -24,21 +24,33 @@
 
 const QString LOG_CAT = QStringLiteral("Hooking");
 
-void HookManager::doGraphicsContextInitialized(GraphicsContext *gfx)
+static void gfxInitializedHandler(void *opaque, VidgfxContext *context)
+{
+	HookManager *mgr = static_cast<HookManager *>(opaque);
+	mgr->graphicsContextInitialized(context);
+}
+
+static void gfxDestroyingHandler(void *opaque, VidgfxContext *context)
+{
+	HookManager *mgr = static_cast<HookManager *>(opaque);
+	mgr->graphicsContextDestroyed(context);
+}
+
+void HookManager::doGraphicsContextInitialized(VidgfxContext *gfx)
 {
 	if(gfx == NULL)
 		return; // Extra safe
 
 	// Forward the signal to our instance
 	HookManager *mgr = CaptureManager::getManager()->getHookManager();
-	if(gfx->isValid())
+	if(vidgfx_context_is_valid(gfx))
 		mgr->graphicsContextInitialized(gfx);
 	else {
-		connect(gfx, &GraphicsContext::initialized,
-			mgr, &HookManager::graphicsContextInitialized);
+		vidgfx_context_add_initialized_callback(
+			gfx, gfxInitializedHandler, mgr);
 	}
-	connect(gfx, &GraphicsContext::destroying,
-		mgr, &HookManager::graphicsContextInitialized);
+	vidgfx_context_add_destroying_callback(
+		gfx, gfxDestroyingHandler, mgr);
 }
 
 HookManager::HookManager()
@@ -53,21 +65,30 @@ HookManager::HookManager()
 
 	// Make sure we know when we can initialize or destroy hardware resources
 	// for our child capture objects
-	GraphicsContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
 	if(gfx != NULL) {
-		if(gfx->isValid())
+		if(vidgfx_context_is_valid(gfx))
 			graphicsContextInitialized(gfx);
 		else {
-			connect(gfx, &GraphicsContext::initialized,
-				this, &HookManager::graphicsContextInitialized);
+			vidgfx_context_add_initialized_callback(
+				gfx, gfxInitializedHandler, this);
 		}
-		connect(gfx, &GraphicsContext::destroying,
-			this, &HookManager::graphicsContextDestroyed);
+		vidgfx_context_add_destroying_callback(
+			gfx, gfxDestroyingHandler, this);
 	}
 }
 
 HookManager::~HookManager()
 {
+	// Remove callbacks
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	if(vidgfx_context_is_valid(gfx)) {
+		vidgfx_context_remove_initialized_callback(
+			gfx, gfxInitializedHandler, this);
+		vidgfx_context_remove_destroying_callback(
+			gfx, gfxDestroyingHandler, this);
+	}
+
 	// Delete memory segment
 	if(m_shm != NULL) {
 		// Notify hooks that they should terminate
@@ -370,7 +391,7 @@ void HookManager::realTimeFrameEvent(int numDropped, int lateByUsec)
 	processInterprocessLog();
 }
 
-void HookManager::graphicsContextInitialized(GraphicsContext *gfx)
+void HookManager::graphicsContextInitialized(VidgfxContext *gfx)
 {
 #ifdef Q_OS_WIN
 	D3DContext *d3dGfx = static_cast<D3DContext *>(gfx);
@@ -383,7 +404,7 @@ void HookManager::graphicsContextInitialized(GraphicsContext *gfx)
 #endif
 }
 
-void HookManager::graphicsContextDestroyed(GraphicsContext *gfx)
+void HookManager::graphicsContextDestroyed(VidgfxContext *gfx)
 {
 }
 

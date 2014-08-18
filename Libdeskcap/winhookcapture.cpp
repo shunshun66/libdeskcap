@@ -84,8 +84,8 @@ WinHookCapture::~WinHookCapture()
 	capLog(LOG_CAT) << QStringLiteral("Destroying hook capture of window: %1")
 		.arg(title);
 
-	GraphicsContext *gfx = mgr->getGraphicsContext();
-	if(gfx != NULL && gfx->isValid())
+	VidgfxContext *gfx = mgr->getGraphicsContext();
+	if(vidgfx_context_is_valid(gfx))
 		destroyResources(gfx);
 }
 
@@ -115,8 +115,8 @@ void WinHookCapture::queuedFrameEvent(uint fNum, int numDropped)
 	{
 		return;
 	}
-	GraphicsContext *gfx = CaptureManager::getManager()->getGraphicsContext();
-	if(gfx == NULL || !gfx->isValid())
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	if(!vidgfx_context_is_valid(gfx))
 		return;
 	if(m_capShm == NULL || !m_capShm->isValid())
 		return;
@@ -213,7 +213,8 @@ void WinHookCapture::queuedFrameEvent(uint fNum, int numDropped)
 			// in order to fix this issue.
 
 #if COPY_SHARED_TEX_TO_CACHE
-			gfx->copyTextureData(m_texture, m_activeSharedTex, QPoint(0, 0),
+			vidgfx_context_copy_tex_data(
+				gfx, m_texture, m_activeSharedTex, QPoint(0, 0),
 				QRect(QPoint(0, 0), m_texture->getSize()));
 #endif // COPY_SHARED_TEX_TO_CACHE
 		}
@@ -221,7 +222,7 @@ void WinHookCapture::queuedFrameEvent(uint fNum, int numDropped)
 	}
 }
 
-void WinHookCapture::initializeResources(GraphicsContext *gfx)
+void WinHookCapture::initializeResources(VidgfxContext *gfx)
 {
 	// Because CaptureObjects are referenced by both the CaptureManager and
 	// scene layers it is possible for us to receive two initialize signals
@@ -239,8 +240,8 @@ void WinHookCapture::updateTexture()
 {
 	if(!m_resourcesInitialized)
 		return; // We may receive ticks before being initialized
-	GraphicsContext *gfx = CaptureManager::getManager()->getGraphicsContext();
-	if(gfx == NULL || !gfx->isValid())
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	if(!vidgfx_context_is_valid(gfx))
 		return;
 	if(m_capShm == NULL || !m_capShm->isValid())
 		return;
@@ -253,7 +254,7 @@ void WinHookCapture::updateTexture()
 	// just in case anyway.
 	if(m_capShm->getCaptureType() == RawPixelsShmType) {
 		if(m_texture != NULL && m_texture->getSize() != size) {
-			gfx->deleteTexture(m_texture);
+			vidgfx_context_destroy_tex(gfx, m_texture);
 			m_texture = NULL;
 		}
 	} else { // Shared DX10 textures
@@ -261,14 +262,14 @@ void WinHookCapture::updateTexture()
 			if(m_sharedTexs[0]->getSize() != size) {
 				// Deallocate shared texture array
 				for(int i = 0; i < m_numSharedTexs; i++)
-					gfx->deleteTexture(m_sharedTexs[i]);
+					vidgfx_context_destroy_tex(gfx, m_sharedTexs[i]);
 				delete[] m_sharedTexs;
 				m_sharedTexs = NULL;
 				m_numSharedTexs = 0;
 
 #if COPY_SHARED_TEX_TO_CACHE
 				// Deallocate cache texture
-				gfx->deleteTexture(m_texture);
+				vidgfx_context_destroy_tex(gfx, m_texture);
 				m_texture = NULL;
 #endif // COPY_SHARED_TEX_TO_CACHE
 			}
@@ -295,7 +296,7 @@ void WinHookCapture::updateTexture()
 		}
 		m_isFlipped = (extraData->isFlipped > 0 ? true : false);
 		// TODO: We assume BGRA format always
-		m_texture = gfx->createTexture(size, true, false, true);
+		m_texture = vidgfx_context_new_tex(gfx, size, true, false, true);
 	} else { // Shared DX10 textures
 		// Reallocate shared texture array
 		m_numSharedTexs = m_capShm->getNumFrames();
@@ -314,7 +315,7 @@ void WinHookCapture::updateTexture()
 		if(m_sharedTexs[0] == NULL) {
 			// Deallocate shared texture array
 			for(int i = 0; i < m_numSharedTexs; i++)
-				gfx->deleteTexture(m_sharedTexs[i]);
+				vidgfx_context_destroy_tex(gfx, m_sharedTexs[i]);
 			delete[] m_sharedTexs;
 			m_sharedTexs = NULL;
 			m_numSharedTexs = 0;
@@ -323,8 +324,8 @@ void WinHookCapture::updateTexture()
 #if COPY_SHARED_TEX_TO_CACHE
 		// Allocate the cache texture
 		if(m_numSharedTexs > 0) {
-			m_texture = gfx->createTexture(
-				size, m_sharedTexs[0], false, false);
+			m_texture = vidgfx_context_new_tex(
+				gfx, size, m_sharedTexs[0], false, false);
 		}
 #endif // COPY_SHARED_TEX_TO_CACHE
 
@@ -332,19 +333,19 @@ void WinHookCapture::updateTexture()
 	}
 }
 
-void WinHookCapture::destroyResources(GraphicsContext *gfx)
+void WinHookCapture::destroyResources(VidgfxContext *gfx)
 {
 	if(!m_resourcesInitialized)
 		return;
 	m_resourcesInitialized = false;
 
 	if(m_texture != NULL) {
-		gfx->deleteTexture(m_texture);
+		vidgfx_context_destroy_tex(gfx, m_texture);
 		m_texture = NULL;
 	}
 	if(m_sharedTexs != NULL) {
 		for(int i = 0; i < m_numSharedTexs; i++)
-			gfx->deleteTexture(m_sharedTexs[i]);
+			vidgfx_context_destroy_tex(gfx, m_sharedTexs[i]);
 		delete[] m_sharedTexs;
 		m_sharedTexs = NULL;
 	}
@@ -382,8 +383,8 @@ void WinHookCapture::windowReset(WinId winId)
 		return; // Not our window
 
 	// Destroy existing resources
-	GraphicsContext *gfx = CaptureManager::getManager()->getGraphicsContext();
-	if(gfx != NULL && gfx->isValid())
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	if(vidgfx_context_is_valid(gfx))
 		destroyResources(gfx);
 
 	// Destroy existing shared segment. As the hook already called `remove()`
@@ -422,6 +423,6 @@ void WinHookCapture::windowReset(WinId winId)
 	m_activeFrameNum = -1;
 
 	// Reinitialize resources
-	if(gfx != NULL && gfx->isValid())
+	if(vidgfx_context_is_valid(gfx))
 		initializeResources(gfx);
 }

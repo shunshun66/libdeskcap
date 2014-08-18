@@ -26,7 +26,7 @@
 // Validate library versions
 
 #if LIBVIDGFX_VER_MAJOR != 0 || \
-	LIBVIDGFX_VER_MINOR != 5 || \
+	LIBVIDGFX_VER_MINOR != 6 || \
 	LIBVIDGFX_VER_BUILD != 0
 #error Mismatched Libvidgfx version!
 #endif
