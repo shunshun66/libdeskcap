@@ -25,7 +25,6 @@
 #include <windows.h>
 
 class CaptureSharedSegment;
-class Texture;
 
 //=============================================================================
 class WinHookCapture : public QObject
@@ -34,9 +33,9 @@ class WinHookCapture : public QObject
 
 private: // Members -----------------------------------------------------------
 	HWND					m_hwnd;
-	Texture *				m_texture;
-	Texture **				m_sharedTexs;
-	Texture *				m_activeSharedTex;
+	VidgfxTex *				m_texture;
+	VidgfxTex **				m_sharedTexs;
+	VidgfxTex *				m_activeSharedTex;
 	int						m_activeFrameNum;
 	int						m_numSharedTexs;
 	bool					m_isFlipped;
@@ -58,7 +57,7 @@ public: // Methods ------------------------------------------------------------
 	void		destroyResources(VidgfxContext *gfx);
 
 	QSize		getSize() const;
-	Texture *	getTexture() const;
+	VidgfxTex *	getTexture() const;
 	bool		isFlipped() const;
 
 private:

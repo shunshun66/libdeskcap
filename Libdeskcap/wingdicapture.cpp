@@ -144,7 +144,7 @@ void WinGDICapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 		// TODO: We should clear the destination first as the source may
 		// contain pixels with transparency
 		if(BitBlt(
-			texDC, 0, 0, tex->getSize().width(), tex->getSize().height(),
+			texDC, 0, 0, vidgfx_tex_get_width(tex), vidgfx_tex_get_height(tex),
 			m_hdc, srcX, srcY, SRCCOPY) == 0)
 		{
 			// Don't log failure as it'll spam the log file
@@ -154,8 +154,8 @@ void WinGDICapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 		// Fallback if DXGI 1.1 or BGRA texture support isn't available.
 		// WARNING: This can be very slow as it blocks.
 
-		int width = m_texture->getSize().width();
-		int height = m_texture->getSize().height();
+		int width = vidgfx_tex_get_width(m_texture);
+		int height = vidgfx_tex_get_height(m_texture);
 		if(srcWidth == 0 || srcHeight == 0) {
 			srcWidth = width;
 			srcHeight = height;
@@ -190,7 +190,7 @@ void WinGDICapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 		QImage img = qt_imageFromWinHBITMAP(hdc, hbmp, width, height);
 
 		// Update texture pixel data
-		m_texture->updateData(img);
+		vidgfx_tex_update_data(m_texture, img);
 
 		// Clean up
 		SelectObject(hdc, prevObj);
@@ -245,7 +245,7 @@ void WinGDICapture::updateTexture()
 	}
 
 	// Has the window size changed? If so we need to recreate the texture
-	if(m_texture != NULL && m_texture->getSize() != size) {
+	if(m_texture != NULL && vidgfx_tex_get_size(m_texture) != size) {
 		vidgfx_context_destroy_tex(gfx, m_texture);
 		m_texture = NULL;
 	}
@@ -306,10 +306,10 @@ QSize WinGDICapture::getSize() const
 {
 	if(m_texture == NULL)
 		return QSize();
-	return m_texture->getSize();
+	return vidgfx_tex_get_size(m_texture);
 }
 
-Texture *WinGDICapture::getTexture() const
+VidgfxTex *WinGDICapture::getTexture() const
 {
 	return m_texture;
 }

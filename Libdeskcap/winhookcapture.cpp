@@ -148,7 +148,7 @@ void WinHookCapture::queuedFrameEvent(uint fNum, int numDropped)
 	}
 
 	if(m_capShm->getCaptureType() == RawPixelsShmType) {
-		quint8 *dataDst = (quint8 *)m_texture->map();
+		quint8 *dataDst = (quint8 *)vidgfx_tex_map(m_texture);
 		if(dataDst == NULL) {
 			// Error message already logged
 			m_capShm->unlock();
@@ -156,19 +156,19 @@ void WinHookCapture::queuedFrameEvent(uint fNum, int numDropped)
 		}
 		quint8 *dataSrc = (quint8 *)m_capShm->getFrameDataPtr(frameNum);
 		uint bpp = m_capShm->getRawPixelsExtraDataPtr()->bpp;
-		uint srcStride = m_texture->getWidth() * bpp;
-		imgDataCopy(dataDst, dataSrc, m_texture->getStride(), srcStride,
-			QSize(srcStride, m_texture->getHeight()));
+		uint srcStride = vidgfx_tex_get_width(m_texture) * bpp;
+		imgDataCopy(dataDst, dataSrc, vidgfx_tex_get_stride(m_texture),
+			srcStride, QSize(srcStride, vidgfx_tex_get_height(m_texture)));
 		m_capShm->setFrameUsed(frameNum, false); // Frame acknowledged
 		m_capShm->unlock();
-		m_texture->unmap();
+		vidgfx_tex_unmap(m_texture);
 
 		// Debug capturing by testing the colours of specific pixels
 #define DO_PIXEL_DEBUG_TEST 0
 #if DO_PIXEL_DEBUG_TEST
 		quint8 *test = NULL;
 #define TEST_PBO_PIXEL(x, y, r, g, b) \
-	test = &dataSrc[((x)+(y)*m_texture->getWidth())*bpp]; \
+	test = &dataSrc[((x)+(y)*vidgfx_tex_get_width(m_texture))*bpp]; \
 	if(test[0] != (b) || test[1] != (g) || test[2] != (r)) \
 	capLog(CapLog::Warning) << QStringLiteral("(%1, %2, %3) != (%4, %5, %6)") \
 	.arg(test[0]).arg(test[1]).arg(test[2]).arg(b).arg(g).arg(r)
@@ -215,7 +215,7 @@ void WinHookCapture::queuedFrameEvent(uint fNum, int numDropped)
 #if COPY_SHARED_TEX_TO_CACHE
 			vidgfx_context_copy_tex_data(
 				gfx, m_texture, m_activeSharedTex, QPoint(0, 0),
-				QRect(QPoint(0, 0), m_texture->getSize()));
+				QRect(QPoint(0, 0), vidgfx_tex_get_size(m_texture)));
 #endif // COPY_SHARED_TEX_TO_CACHE
 		}
 		m_capShm->unlock();
@@ -253,7 +253,7 @@ void WinHookCapture::updateTexture()
 	// should never happen as we should receive a reset signal first but do it
 	// just in case anyway.
 	if(m_capShm->getCaptureType() == RawPixelsShmType) {
-		if(m_texture != NULL && m_texture->getSize() != size) {
+		if(m_texture != NULL && vidgfx_tex_get_size(m_texture) != size) {
 			vidgfx_context_destroy_tex(gfx, m_texture);
 			m_texture = NULL;
 		}
@@ -300,8 +300,8 @@ void WinHookCapture::updateTexture()
 	} else { // Shared DX10 textures
 		// Reallocate shared texture array
 		m_numSharedTexs = m_capShm->getNumFrames();
-		m_sharedTexs = new Texture*[m_numSharedTexs];
-		memset(m_sharedTexs, 0, sizeof(Texture *) * m_numSharedTexs);
+		m_sharedTexs = new VidgfxTex*[m_numSharedTexs];
+		memset(m_sharedTexs, 0, sizeof(VidgfxTex *) * m_numSharedTexs);
 
 		// Create shared texture objects
 		for(int i = 0; i < m_numSharedTexs; i++) {
@@ -356,14 +356,14 @@ QSize WinHookCapture::getSize() const
 {
 #if !COPY_SHARED_TEX_TO_CACHE
 	if(m_activeSharedTex != NULL)
-		return m_activeSharedTex->getSize();
+		return vidgfx_tex_get_size(m_activeSharedTex);
 #endif // !COPY_SHARED_TEX_TO_CACHE
 	if(m_texture != NULL)
-		return m_texture->getSize();
+		return vidgfx_tex_get_size(m_texture);
 	return QSize();
 }
 
-Texture *WinHookCapture::getTexture() const
+VidgfxTex *WinHookCapture::getTexture() const
 {
 #if !COPY_SHARED_TEX_TO_CACHE
 	if(m_activeSharedTex != NULL)

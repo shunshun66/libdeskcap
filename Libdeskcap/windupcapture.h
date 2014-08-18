@@ -24,7 +24,6 @@
 #include <QtCore/QObject>
 #include <windows.h>
 
-class Texture;
 struct IDXGIOutputDuplication;
 
 //=============================================================================
@@ -35,7 +34,7 @@ class WinDupCapture : public QObject
 private: // Members -----------------------------------------------------------
 	HMONITOR	m_hMonitor;
 	IDXGIOutputDuplication *	m_duplicator;
-	Texture *	m_texture;
+	VidgfxTex *	m_texture;
 	int			m_ref;
 	bool		m_resourcesInitialized;
 	bool		m_isValid;
@@ -57,11 +56,11 @@ public: // Methods ------------------------------------------------------------
 	void		destroyResources(VidgfxContext *gfx);
 
 	QSize		getSize() const;
-	Texture *	getTexture() const;
+	VidgfxTex *	getTexture() const;
 
 private:
 	void		acquireDuplicator();
-	void		updateTexture(Texture *frameTex);
+	void		updateTexture(VidgfxTex *frameTex);
 };
 //=============================================================================
 

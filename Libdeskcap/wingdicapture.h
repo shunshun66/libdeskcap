@@ -24,8 +24,6 @@
 #include <QtCore/QObject>
 #include <windows.h>
 
-class Texture;
-
 //=============================================================================
 class WinGDICapture : public QObject
 {
@@ -35,7 +33,7 @@ private: // Members -----------------------------------------------------------
 	HWND		m_hwnd;
 	HMONITOR	m_hMonitor;
 	HDC			m_hdc;
-	Texture *	m_texture;
+	VidgfxTex *	m_texture;
 	int			m_ref;
 	bool		m_resourcesInitialized;
 	bool		m_useDxgi11BgraMethod;
@@ -56,7 +54,7 @@ public: // Methods ------------------------------------------------------------
 	void		destroyResources(VidgfxContext *gfx);
 
 	QSize		getSize() const;
-	Texture *	getTexture() const;
+	VidgfxTex *	getTexture() const;
 
 private:
 	void		updateTexture();

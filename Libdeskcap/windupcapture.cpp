@@ -205,7 +205,7 @@ void WinDupCapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 		goto exitFrameEvent1;
 	}
 	frameRes->Release();
-	Texture *frameTex = d3dGfx->openDX10Texture(frameD3DTex);
+	VidgfxTex *frameTex = d3dGfx->openDX10Texture(frameD3DTex);
 	if(frameTex == NULL) {
 		// Don't log as it'll spam
 		frameD3DTex->Release();
@@ -221,7 +221,7 @@ void WinDupCapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 
 	// Copy the acquired resource to another texture
 	if(!vidgfx_context_copy_tex_data(gfx, m_texture, frameTex, QPoint(0, 0),
-		QRect(QPoint(0, 0), frameTex->getSize())))
+		QRect(QPoint(0, 0), vidgfx_tex_get_size(frameTex))))
 	{
 		// Failed to copy, don't log as it'll spam
 		goto exitFrameEvent2;
@@ -263,7 +263,7 @@ void WinDupCapture::initializeResources(VidgfxContext *gfx)
 /// Update the cache texture to match the specified frame texture's dimensions
 /// and format. Does NOT actually copy any pixel data.
 /// </summary>
-void WinDupCapture::updateTexture(Texture *frameTex)
+void WinDupCapture::updateTexture(VidgfxTex *frameTex)
 {
 	if(!m_isValid)
 		return;
@@ -273,18 +273,20 @@ void WinDupCapture::updateTexture(Texture *frameTex)
 	if(!vidgfx_context_is_valid(gfx))
 		return;
 	D3DContext *d3dGfx = static_cast<D3DContext *>(gfx);
-	if(frameTex == NULL || !frameTex->isValid())
+	if(frameTex == NULL || !vidgfx_tex_is_valid(frameTex))
 		return;
 
 	// Has the texture size changed? If so we need to recreate the texture
-	if(m_texture != NULL && m_texture->getSize() != frameTex->getSize()) {
+	if(m_texture != NULL &&
+		vidgfx_tex_get_size(m_texture) != vidgfx_tex_get_size(frameTex))
+	{
 		vidgfx_context_destroy_tex(gfx, m_texture);
 		m_texture = NULL;
 	}
 
 	// Do not create a texture if we failed to get the window size as the
 	// window may no longer exist or if we already have a valid texture
-	if(frameTex->getSize().isEmpty() || m_texture != NULL)
+	if(vidgfx_tex_get_size(frameTex).isEmpty() || m_texture != NULL)
 		return;
 
 	// Create a standard BGRA texture that is writable by the GPU. If
@@ -293,7 +295,7 @@ void WinDupCapture::updateTexture(Texture *frameTex)
 	// duplicator API is guarenteed to return a BGRA format
 	if(!m_failedOnce) {
 		m_texture = d3dGfx->createTexture(
-			frameTex->getSize(), false, false, true);
+			vidgfx_tex_get_size(frameTex), false, false, true);
 	}
 	if(m_texture == NULL) {
 		capLog(LOG_CAT, CapLog::Warning)
@@ -327,10 +329,10 @@ QSize WinDupCapture::getSize() const
 {
 	if(m_texture == NULL)
 		return QSize();
-	return m_texture->getSize();
+	return vidgfx_tex_get_size(m_texture);
 }
 
-Texture *WinDupCapture::getTexture() const
+VidgfxTex *WinDupCapture::getTexture() const
 {
 	return m_texture;
 }
