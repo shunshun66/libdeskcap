@@ -22,7 +22,6 @@
 #include "../Common/capturesharedsegment.h"
 #include "../Common/imghelpers.h"
 #include "../Common/mainsharedsegment.h"
-#include <Libvidgfx/d3dcontext.h>
 
 const QString LOG_CAT = QStringLiteral("WinCapture");
 
@@ -259,7 +258,7 @@ void WinHookCapture::updateTexture()
 		}
 	} else { // Shared DX10 textures
 		if(m_sharedTexs != NULL && m_numSharedTexs != 0) {
-			if(m_sharedTexs[0]->getSize() != size) {
+			if(vidgfx_tex_get_size(m_sharedTexs[0]) != size) {
 				// Deallocate shared texture array
 				for(int i = 0; i < m_numSharedTexs; i++)
 					vidgfx_context_destroy_tex(gfx, m_sharedTexs[i]);
@@ -305,9 +304,10 @@ void WinHookCapture::updateTexture()
 
 		// Create shared texture objects
 		for(int i = 0; i < m_numSharedTexs; i++) {
-			D3DContext *d3dGfx = static_cast<D3DContext *>(gfx);
+			VidgfxD3DContext *d3dGfx = vidgfx_context_get_d3dcontext(gfx);
 			HANDLE *handle = (HANDLE *)m_capShm->getFrameDataPtr(i);
-			m_sharedTexs[i] = d3dGfx->openSharedTexture(*handle);
+			m_sharedTexs[i] = vidgfx_d3dcontext_open_shared_tex(
+				d3dGfx, *handle);
 		}
 
 		// If we failed to create the first texture then assume that all of

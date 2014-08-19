@@ -20,7 +20,6 @@
 #include "include/capturemanager.h"
 #include "../Common/interprocesslog.h"
 #include "../Common/mainsharedsegment.h"
-#include <Libvidgfx/d3dcontext.h>
 
 const QString LOG_CAT = QStringLiteral("Hooking");
 
@@ -35,6 +34,22 @@ static void gfxDestroyingHandler(void *opaque, VidgfxContext *context)
 	HookManager *mgr = static_cast<HookManager *>(opaque);
 	mgr->graphicsContextDestroyed(context);
 }
+
+#ifdef Q_OS_WIN
+static void gfxDxgi11ChangedHandler(
+	void *opaque, VidgfxD3DContext *context, bool has_dxgi11)
+{
+	HookManager *mgr = static_cast<HookManager *>(opaque);
+	mgr->hasDxgi11Changed(has_dxgi11);
+}
+
+static void gfxBgraTexSupportChangedHandler(
+	void *opaque, VidgfxD3DContext *context, bool has_bgra_tex_support)
+{
+	HookManager *mgr = static_cast<HookManager *>(opaque);
+	mgr->hasBgraTexSupportChanged(has_bgra_tex_support);
+}
+#endif // Q_OS_WIN
 
 void HookManager::doGraphicsContextInitialized(VidgfxContext *gfx)
 {
@@ -394,11 +409,11 @@ void HookManager::realTimeFrameEvent(int numDropped, int lateByUsec)
 void HookManager::graphicsContextInitialized(VidgfxContext *gfx)
 {
 #ifdef Q_OS_WIN
-	D3DContext *d3dGfx = static_cast<D3DContext *>(gfx);
-	connect(d3dGfx, &D3DContext::hasDxgi11Changed,
-		this, &HookManager::hasDxgi11Changed);
-	connect(d3dGfx, &D3DContext::hasBgraTexSupportChanged,
-		this, &HookManager::hasBgraTexSupportChanged);
+	VidgfxD3DContext *d3dGfx = vidgfx_context_get_d3dcontext(gfx);
+	vidgfx_d3dcontext_add_dxgi11_changed_callback(
+		d3dGfx, gfxDxgi11ChangedHandler, this);
+	vidgfx_d3dcontext_add_bgra_tex_support_changed_callback(
+		d3dGfx, gfxBgraTexSupportChangedHandler, this);
 #elif
 #error Unsupported platform
 #endif
@@ -406,6 +421,15 @@ void HookManager::graphicsContextInitialized(VidgfxContext *gfx)
 
 void HookManager::graphicsContextDestroyed(VidgfxContext *gfx)
 {
+#ifdef Q_OS_WIN
+	VidgfxD3DContext *d3dGfx = vidgfx_context_get_d3dcontext(gfx);
+	vidgfx_d3dcontext_remove_dxgi11_changed_callback(
+		d3dGfx, gfxDxgi11ChangedHandler, this);
+	vidgfx_d3dcontext_remove_bgra_tex_support_changed_callback(
+		d3dGfx, gfxBgraTexSupportChangedHandler, this);
+#elif
+#error Unsupported platform
+#endif
 }
 
 void HookManager::hasDxgi11Changed(bool hasDxgi11)

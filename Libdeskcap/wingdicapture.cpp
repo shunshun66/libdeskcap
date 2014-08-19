@@ -257,15 +257,16 @@ void WinGDICapture::updateTexture()
 
 	// Copying pixel data from a HDC to DX10 directly using the GDI API is only
 	// supported in DXGI 1.1 and if BGRA textures are supported
-	D3DContext *d3dGfx = static_cast<D3DContext *>(gfx);
+	VidgfxD3DContext *d3dGfx = vidgfx_context_get_d3dcontext(gfx);
 	m_useDxgi11BgraMethod =
-		(d3dGfx->hasDxgi11() && d3dGfx->hasBgraTexSupport());
+		(vidgfx_d3dcontext_has_dxgi11(d3dGfx) &&
+		vidgfx_d3dcontext_has_bgra_tex_support(d3dGfx));
 
 	if(m_useDxgi11BgraMethod) {
 		// Create a GDI-compatible texture. If texture creation fails then
 		// don't try it again as it'll spam our log file
 		if(!m_failedOnce)
-			m_texture = d3dGfx->createGDITexture(size);
+			m_texture = vidgfx_d3dcontext_new_gdi_tex(d3dGfx, size);
 		if(m_texture == NULL) {
 			capLog(LOG_CAT, CapLog::Warning)
 				<< QStringLiteral("Failed to create GDI-compatible texture");
@@ -278,7 +279,7 @@ void WinGDICapture::updateTexture()
 		// will be writing it to the texture as (The graphics context will
 		// automatically swizzle for us if BGRA is not natively supported).
 		if(!m_failedOnce)
-			m_texture = d3dGfx->createTexture(size, true, false, true);
+			m_texture = vidgfx_context_new_tex(gfx, size, true, false, true);
 		if(m_texture == NULL) {
 			capLog(LOG_CAT, CapLog::Warning)
 				<< QStringLiteral("Failed to create writable RGBA texture");

@@ -20,7 +20,6 @@
 #include "wincapturemanager.h"
 #include <dxgi1_2.h>
 #include <d3d10_1.h>
-#include <Libvidgfx/d3dcontext.h>
 
 const QString LOG_CAT = QStringLiteral("WinCapture");
 
@@ -96,7 +95,7 @@ void WinDupCapture::acquireDuplicator()
 			"Error creating duplicator capture of monitor. Reason = Context not valid");
 		return;
 	}
-	D3DContext *d3dGfx = static_cast<D3DContext *>(gfx);
+	VidgfxD3DContext *d3dGfx = vidgfx_context_get_d3dcontext(gfx);
 
 	// Get duplicator interface
 	IDXGIOutput1 *output = NULL;
@@ -107,7 +106,8 @@ void WinDupCapture::acquireDuplicator()
 			"Error creating duplicator capture of monitor. Reason = No DXGI 1.2");
 		return;
 	}
-	res = output->DuplicateOutput(d3dGfx->getDevice(), &m_duplicator);
+	res = output->DuplicateOutput(
+		vidgfx_d3dcontext_get_device(d3dGfx), &m_duplicator);
 	output->Release();
 	if(FAILED(res)) {
 		if(res == E_INVALIDARG) {
@@ -156,7 +156,7 @@ void WinDupCapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
 	if(!vidgfx_context_is_valid(gfx))
 		return;
-	D3DContext *d3dGfx = static_cast<D3DContext *>(gfx);
+	VidgfxD3DContext *d3dGfx = vidgfx_context_get_d3dcontext(gfx);
 	if(m_duplicator == NULL && m_attemptReaquire) {
 		// We lost the duplicator during a monitor mode change. Try again.
 		// WARNING: This may cause spam if the monitor never enters a mode that
@@ -205,7 +205,7 @@ void WinDupCapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 		goto exitFrameEvent1;
 	}
 	frameRes->Release();
-	VidgfxTex *frameTex = d3dGfx->openDX10Texture(frameD3DTex);
+	VidgfxTex *frameTex = vidgfx_d3dcontext_open_dx10_tex(d3dGfx, frameD3DTex);
 	if(frameTex == NULL) {
 		// Don't log as it'll spam
 		frameD3DTex->Release();
@@ -272,7 +272,6 @@ void WinDupCapture::updateTexture(VidgfxTex *frameTex)
 	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
 	if(!vidgfx_context_is_valid(gfx))
 		return;
-	D3DContext *d3dGfx = static_cast<D3DContext *>(gfx);
 	if(frameTex == NULL || !vidgfx_tex_is_valid(frameTex))
 		return;
 
@@ -294,8 +293,8 @@ void WinDupCapture::updateTexture(VidgfxTex *frameTex)
 	// file. We don't need to worry about BGRA not being supported as the
 	// duplicator API is guarenteed to return a BGRA format
 	if(!m_failedOnce) {
-		m_texture = d3dGfx->createTexture(
-			vidgfx_tex_get_size(frameTex), false, false, true);
+		m_texture = vidgfx_context_new_tex(
+			gfx, vidgfx_tex_get_size(frameTex), false, false, true);
 	}
 	if(m_texture == NULL) {
 		capLog(LOG_CAT, CapLog::Warning)

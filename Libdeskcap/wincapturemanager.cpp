@@ -23,7 +23,6 @@
 #include "winhookcapture.h"
 #include <dxgi.h>
 #include <psapi.h>
-#include <Libvidgfx/d3dcontext.h>
 #include <QtCore/QFileInfo>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QDesktopWidget>
@@ -961,7 +960,7 @@ IDXGIOutput *WinCaptureManager::getDXGIOutputForMonitor(HMONITOR handle)
 	// process!
 	IDXGIFactory *factory = NULL;
 	IDXGIFactory1 *factory1 = NULL;
-	HRESULT res = D3DContext::createDXGIFactory1Dynamic(&factory1);
+	HRESULT res = vidgfx_d3d_create_dxgifactory1_dyn(&factory1);
 	if(factory1 == NULL)
 		res = CreateDXGIFactory(__uuidof(IDXGIFactory), (void **)&factory);
 	if(FAILED(res))
