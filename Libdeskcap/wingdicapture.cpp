@@ -18,7 +18,6 @@
 #include "wingdicapture.h"
 #include "include/caplog.h"
 #include "wincapturemanager.h"
-#include <Libvidgfx/d3dcontext.h>
 #include <QtGui/QImage>
 
 // Undocumented Qt helper functions that are exported from the QtGui library
@@ -139,17 +138,17 @@ void WinGDICapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 		return; // No texture to paint on
 	if(m_useDxgi11BgraMethod) {
 		// DXGI 1.1 is available and BGRA textures are supported
-		D3DTexture *tex = static_cast<D3DTexture *>(m_texture);
-		HDC texDC = tex->getDC();
+		VidgfxD3DTex *tex = vidgfx_tex_get_d3dtex(m_texture);
+		HDC texDC = vidgfx_d3dtex_get_dc(tex);
 		// TODO: We should clear the destination first as the source may
 		// contain pixels with transparency
 		if(BitBlt(
-			texDC, 0, 0, vidgfx_tex_get_width(tex), vidgfx_tex_get_height(tex),
-			m_hdc, srcX, srcY, SRCCOPY) == 0)
+			texDC, 0, 0, vidgfx_tex_get_width(m_texture),
+			vidgfx_tex_get_height(m_texture), m_hdc, srcX, srcY, SRCCOPY) == 0)
 		{
 			// Don't log failure as it'll spam the log file
 		}
-		tex->releaseDC();
+		vidgfx_d3dtex_release_dc(tex);
 	} else {
 		// Fallback if DXGI 1.1 or BGRA texture support isn't available.
 		// WARNING: This can be very slow as it blocks.
