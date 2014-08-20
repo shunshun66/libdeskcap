@@ -18,7 +18,6 @@
 #include "wingdicapture.h"
 #include "include/caplog.h"
 #include "wincapturemanager.h"
-#include <Libvidgfx/d3dcontext.h>
 #include <QtGui/QImage>
 
 // Undocumented Qt helper functions that are exported from the QtGui library
@@ -61,8 +60,8 @@ WinGDICapture::WinGDICapture(HWND hwnd, HMONITOR hMonitor)
 			.arg(title);
 	}
 
-	GraphicsContext *gfx = CaptureManager::getManager()->getGraphicsContext();
-	if(gfx != NULL && gfx->isValid())
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	if(vidgfx_context_is_valid(gfx))
 		initializeResources(gfx);
 }
 
@@ -88,8 +87,8 @@ WinGDICapture::~WinGDICapture()
 			.arg(title);
 	}
 
-	GraphicsContext *gfx = CaptureManager::getManager()->getGraphicsContext();
-	if(gfx != NULL && gfx->isValid())
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	if(vidgfx_context_is_valid(gfx))
 		destroyResources(gfx);
 
 	ReleaseDC(m_hwnd, m_hdc);
@@ -139,23 +138,23 @@ void WinGDICapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 		return; // No texture to paint on
 	if(m_useDxgi11BgraMethod) {
 		// DXGI 1.1 is available and BGRA textures are supported
-		D3DTexture *tex = static_cast<D3DTexture *>(m_texture);
-		HDC texDC = tex->getDC();
+		VidgfxD3DTex *tex = vidgfx_tex_get_d3dtex(m_texture);
+		HDC texDC = vidgfx_d3dtex_get_dc(tex);
 		// TODO: We should clear the destination first as the source may
 		// contain pixels with transparency
 		if(BitBlt(
-			texDC, 0, 0, tex->getSize().width(), tex->getSize().height(),
-			m_hdc, srcX, srcY, SRCCOPY) == 0)
+			texDC, 0, 0, vidgfx_tex_get_width(m_texture),
+			vidgfx_tex_get_height(m_texture), m_hdc, srcX, srcY, SRCCOPY) == 0)
 		{
 			// Don't log failure as it'll spam the log file
 		}
-		tex->releaseDC();
+		vidgfx_d3dtex_release_dc(tex);
 	} else {
 		// Fallback if DXGI 1.1 or BGRA texture support isn't available.
 		// WARNING: This can be very slow as it blocks.
 
-		int width = m_texture->getSize().width();
-		int height = m_texture->getSize().height();
+		int width = vidgfx_tex_get_width(m_texture);
+		int height = vidgfx_tex_get_height(m_texture);
 		if(srcWidth == 0 || srcHeight == 0) {
 			srcWidth = width;
 			srcHeight = height;
@@ -190,7 +189,7 @@ void WinGDICapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 		QImage img = qt_imageFromWinHBITMAP(hdc, hbmp, width, height);
 
 		// Update texture pixel data
-		m_texture->updateData(img);
+		vidgfx_tex_update_data(m_texture, img);
 
 		// Clean up
 		SelectObject(hdc, prevObj);
@@ -199,7 +198,7 @@ void WinGDICapture::lowJitterRealTimeFrameEvent(int numDropped, int lateByUsec)
 	}
 }
 
-void WinGDICapture::initializeResources(GraphicsContext *gfx)
+void WinGDICapture::initializeResources(VidgfxContext *gfx)
 {
 	// Because CaptureObjects are referenced by both the CaptureManager and
 	// scene layers it is possible for us to receive two initialize signals
@@ -224,8 +223,8 @@ void WinGDICapture::updateTexture()
 {
 	if(!m_resourcesInitialized)
 		return; // We may receive ticks before being initialized
-	GraphicsContext *gfx = CaptureManager::getManager()->getGraphicsContext();
-	if(gfx == NULL || !gfx->isValid())
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	if(!vidgfx_context_is_valid(gfx))
 		return;
 
 	// Determine the window size
@@ -245,8 +244,8 @@ void WinGDICapture::updateTexture()
 	}
 
 	// Has the window size changed? If so we need to recreate the texture
-	if(m_texture != NULL && m_texture->getSize() != size) {
-		gfx->deleteTexture(m_texture);
+	if(m_texture != NULL && vidgfx_tex_get_size(m_texture) != size) {
+		vidgfx_context_destroy_tex(gfx, m_texture);
 		m_texture = NULL;
 	}
 
@@ -257,15 +256,16 @@ void WinGDICapture::updateTexture()
 
 	// Copying pixel data from a HDC to DX10 directly using the GDI API is only
 	// supported in DXGI 1.1 and if BGRA textures are supported
-	D3DContext *d3dGfx = static_cast<D3DContext *>(gfx);
+	VidgfxD3DContext *d3dGfx = vidgfx_context_get_d3dcontext(gfx);
 	m_useDxgi11BgraMethod =
-		(d3dGfx->hasDxgi11() && d3dGfx->hasBgraTexSupport());
+		(vidgfx_d3dcontext_has_dxgi11(d3dGfx) &&
+		vidgfx_d3dcontext_has_bgra_tex_support(d3dGfx));
 
 	if(m_useDxgi11BgraMethod) {
 		// Create a GDI-compatible texture. If texture creation fails then
 		// don't try it again as it'll spam our log file
 		if(!m_failedOnce)
-			m_texture = d3dGfx->createGDITexture(size);
+			m_texture = vidgfx_d3dcontext_new_gdi_tex(d3dGfx, size);
 		if(m_texture == NULL) {
 			capLog(LOG_CAT, CapLog::Warning)
 				<< QStringLiteral("Failed to create GDI-compatible texture");
@@ -278,7 +278,7 @@ void WinGDICapture::updateTexture()
 		// will be writing it to the texture as (The graphics context will
 		// automatically swizzle for us if BGRA is not natively supported).
 		if(!m_failedOnce)
-			m_texture = d3dGfx->createTexture(size, true, false, true);
+			m_texture = vidgfx_context_new_tex(gfx, size, true, false, true);
 		if(m_texture == NULL) {
 			capLog(LOG_CAT, CapLog::Warning)
 				<< QStringLiteral("Failed to create writable RGBA texture");
@@ -287,14 +287,14 @@ void WinGDICapture::updateTexture()
 	}
 }
 
-void WinGDICapture::destroyResources(GraphicsContext *gfx)
+void WinGDICapture::destroyResources(VidgfxContext *gfx)
 {
 	if(!m_resourcesInitialized)
 		return;
 	m_resourcesInitialized = false;
 
 	if(m_texture != NULL) {
-		gfx->deleteTexture(m_texture);
+		vidgfx_context_destroy_tex(gfx, m_texture);
 		m_texture = NULL;
 	}
 	m_failedOnce = false;
@@ -306,10 +306,10 @@ QSize WinGDICapture::getSize() const
 {
 	if(m_texture == NULL)
 		return QSize();
-	return m_texture->getSize();
+	return vidgfx_tex_get_size(m_texture);
 }
 
-Texture *WinGDICapture::getTexture() const
+VidgfxTex *WinGDICapture::getTexture() const
 {
 	return m_texture;
 }

@@ -19,9 +19,8 @@
 #define CAPTUREOBJECT_H
 
 #include "libdeskcap.h"
+#include <Libvidgfx/libvidgfx.h>
 #include <QtCore/QObject>
-
-class Texture;
 
 //=============================================================================
 class LDC_EXPORT CaptureObject : public QObject
@@ -41,7 +40,7 @@ public: // Interface ----------------------------------------------------------
 	virtual void		setMethod(CptrMethod method) = 0;
 	virtual CptrMethod	getMethod() const = 0;
 	virtual QSize		getSize() const = 0;
-	virtual Texture *	getTexture() const = 0;
+	virtual VidgfxTex *	getTexture() const = 0;
 	virtual bool		isTextureValid() const = 0;
 	virtual bool		isFlipped() const = 0;
 	virtual QPoint		mapScreenPosToLocal(const QPoint &pos) const = 0;

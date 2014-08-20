@@ -59,7 +59,7 @@ public: // Interface ----------------------------------------------------------
 	virtual void		setMethod(CptrMethod method);
 	virtual CptrMethod	getMethod() const;
 	virtual QSize		getSize() const;
-	virtual Texture *	getTexture() const;
+	virtual VidgfxTex *	getTexture() const;
 	virtual bool		isTextureValid() const;
 	virtual bool		isFlipped() const;
 	virtual QPoint		mapScreenPosToLocal(const QPoint &pos) const;

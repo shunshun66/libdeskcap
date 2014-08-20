@@ -23,11 +23,26 @@
 #endif
 #include "../Common/datatypes.h"
 #include "../Common/mainsharedsegment.h"
-#include <Libvidgfx/graphicscontext.h>
 #include <QtCore/QCoreApplication>
 #include <QtCore/QDir>
 
 CaptureManager *CaptureManager::s_singleton = NULL;
+
+static void gfxInitializedHandler(void *opaque, VidgfxContext *context)
+{
+#ifdef Q_OS_WIN
+	WinCaptureManager *mgr = static_cast<WinCaptureManager *>(opaque);
+	mgr->graphicsContextInitialized(context);
+#endif
+}
+
+static void gfxDestroyingHandler(void *opaque, VidgfxContext *context)
+{
+#ifdef Q_OS_WIN
+	WinCaptureManager *mgr = static_cast<WinCaptureManager *>(opaque);
+	mgr->graphicsContextDestroyed(context);
+#endif
+}
 
 /// <summary>
 /// Creates an instance of the capture manager singleton or gets the existing
@@ -93,6 +108,17 @@ CaptureManager::~CaptureManager()
 	while(m_lowJitterModeRef)
 		derefLowJitterMode();
 
+	// Remove callbacks
+#ifdef Q_OS_WIN
+	WinCaptureManager *mgr = static_cast<WinCaptureManager *>(this);
+	if(vidgfx_context_is_valid(m_gfxContext)) {
+		vidgfx_context_remove_initialized_callback(
+			m_gfxContext, gfxInitializedHandler, mgr);
+		vidgfx_context_remove_destroying_callback(
+			m_gfxContext, gfxDestroyingHandler, mgr);
+	}
+#endif
+
 	// Destroy hook manager
 	delete m_hookManager;
 	m_hookManager = NULL;
@@ -134,7 +160,7 @@ bool CaptureManager::initialize()
 /// Sets the main graphics context that the manager will use for graphics
 /// processing and for returning captured textures.
 /// </summary>
-void CaptureManager::setGraphicsContext(GraphicsContext *gfx)
+void CaptureManager::setGraphicsContext(VidgfxContext *gfx)
 {
 	m_gfxContext = gfx;
 	if(gfx == NULL)
@@ -146,14 +172,14 @@ void CaptureManager::setGraphicsContext(GraphicsContext *gfx)
 	// Forward to specific subclasses. TODO: Move to appropriate subclasses
 #ifdef Q_OS_WIN
 	WinCaptureManager *mgr = static_cast<WinCaptureManager *>(this);
-	if(gfx->isValid())
+	if(vidgfx_context_is_valid(gfx))
 		mgr->graphicsContextInitialized(gfx);
 	else {
-		connect(gfx, &GraphicsContext::initialized,
-			mgr, &WinCaptureManager::graphicsContextInitialized);
+		vidgfx_context_add_initialized_callback(
+			gfx, gfxInitializedHandler, mgr);
 	}
-	connect(gfx, &GraphicsContext::destroying,
-		mgr, &WinCaptureManager::graphicsContextInitialized);
+	vidgfx_context_add_destroying_callback(
+		gfx, gfxDestroyingHandler, mgr);
 #endif
 }
 

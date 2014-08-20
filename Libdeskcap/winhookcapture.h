@@ -19,13 +19,12 @@
 #define WINHOOKCAPTURE_H
 
 #include "include/captureobject.h"
+#include <Libvidgfx/libvidgfx.h>
 #include <QtCore/QSize>
 #include <QtCore/QObject>
 #include <windows.h>
 
 class CaptureSharedSegment;
-class GraphicsContext;
-class Texture;
 
 //=============================================================================
 class WinHookCapture : public QObject
@@ -34,9 +33,9 @@ class WinHookCapture : public QObject
 
 private: // Members -----------------------------------------------------------
 	HWND					m_hwnd;
-	Texture *				m_texture;
-	Texture **				m_sharedTexs;
-	Texture *				m_activeSharedTex;
+	VidgfxTex *				m_texture;
+	VidgfxTex **				m_sharedTexs;
+	VidgfxTex *				m_activeSharedTex;
 	int						m_activeFrameNum;
 	int						m_numSharedTexs;
 	bool					m_isFlipped;
@@ -54,11 +53,11 @@ public: // Methods ------------------------------------------------------------
 	void		release();
 
 	void		queuedFrameEvent(uint fNum, int numDropped);
-	void		initializeResources(GraphicsContext *gfx);
-	void		destroyResources(GraphicsContext *gfx);
+	void		initializeResources(VidgfxContext *gfx);
+	void		destroyResources(VidgfxContext *gfx);
 
 	QSize		getSize() const;
-	Texture *	getTexture() const;
+	VidgfxTex *	getTexture() const;
 	bool		isFlipped() const;
 
 private:

@@ -33,10 +33,10 @@
 
 // Library version. NOTE: Don't forget to update the values in _ALL_ of the
 // resource files as well ("Libdeskcap.rc", helpers and hooks)
-#define LIBDESKCAP_VER_STR "v0.5.1"
+#define LIBDESKCAP_VER_STR "v0.6.0"
 #define LIBDESKCAP_VER_MAJOR 0
-#define LIBDESKCAP_VER_MINOR 5
-#define LIBDESKCAP_VER_BUILD 1
+#define LIBDESKCAP_VER_MINOR 6
+#define LIBDESKCAP_VER_BUILD 0
 
 //=============================================================================
 // Enumerations

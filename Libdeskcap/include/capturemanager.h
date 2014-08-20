@@ -19,12 +19,12 @@
 #define CAPTUREMANAGER_H
 
 #include "libdeskcap.h"
+#include <Libvidgfx/libvidgfx.h>
 #include <QtCore/QObject>
 #include <QtCore/QProcess>
 #include <QtCore/QVector>
 
 class CaptureObject;
-class GraphicsContext;
 class HookManager;
 
 typedef QVector<MonitorInfo> MonitorInfoList;
@@ -38,7 +38,7 @@ protected: // Static members --------------------------------------------------
 	static CaptureManager *	s_singleton;
 
 protected: // Members ---------------------------------------------------------
-	GraphicsContext *	m_gfxContext;
+	VidgfxContext *		m_gfxContext;
 	HookManager *		m_hookManager;
 	MonitorInfoList		m_monitors;
 	int					m_lowJitterModeRef;
@@ -62,8 +62,8 @@ public:
 	virtual ~CaptureManager();
 
 public: // Methods ------------------------------------------------------------
-	void					setGraphicsContext(GraphicsContext *gfx);
-	GraphicsContext *		getGraphicsContext() const;
+	void					setGraphicsContext(VidgfxContext *gfx);
+	VidgfxContext *			getGraphicsContext() const;
 	HookManager *			getHookManager() const;
 
 	const MonitorInfoList &	getMonitorInfo() const;
@@ -189,7 +189,7 @@ Q_SLOTS: // Private slots -----------------------------------------------------
 };
 //=============================================================================
 
-inline GraphicsContext *CaptureManager::getGraphicsContext() const
+inline VidgfxContext *CaptureManager::getGraphicsContext() const
 {
 	return m_gfxContext;
 }

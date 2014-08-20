@@ -20,25 +20,52 @@
 #include "include/capturemanager.h"
 #include "../Common/interprocesslog.h"
 #include "../Common/mainsharedsegment.h"
-#include <Libvidgfx/d3dcontext.h>
 
 const QString LOG_CAT = QStringLiteral("Hooking");
 
-void HookManager::doGraphicsContextInitialized(GraphicsContext *gfx)
+static void gfxInitializedHandler(void *opaque, VidgfxContext *context)
+{
+	HookManager *mgr = static_cast<HookManager *>(opaque);
+	mgr->graphicsContextInitialized(context);
+}
+
+static void gfxDestroyingHandler(void *opaque, VidgfxContext *context)
+{
+	HookManager *mgr = static_cast<HookManager *>(opaque);
+	mgr->graphicsContextDestroyed(context);
+}
+
+#ifdef Q_OS_WIN
+static void gfxDxgi11ChangedHandler(
+	void *opaque, VidgfxD3DContext *context, bool has_dxgi11)
+{
+	HookManager *mgr = static_cast<HookManager *>(opaque);
+	mgr->hasDxgi11Changed(has_dxgi11);
+}
+
+static void gfxBgraTexSupportChangedHandler(
+	void *opaque, VidgfxD3DContext *context, bool has_bgra_tex_support)
+{
+	HookManager *mgr = static_cast<HookManager *>(opaque);
+	mgr->hasBgraTexSupportChanged(has_bgra_tex_support);
+}
+#endif // Q_OS_WIN
+
+void HookManager::doGraphicsContextInitialized(VidgfxContext *gfx)
 {
 	if(gfx == NULL)
 		return; // Extra safe
 
 	// Forward the signal to our instance
 	HookManager *mgr = CaptureManager::getManager()->getHookManager();
-	if(gfx->isValid())
+	if(vidgfx_context_is_valid(gfx))
 		mgr->graphicsContextInitialized(gfx);
 	else {
-		connect(gfx, &GraphicsContext::initialized,
-			mgr, &HookManager::graphicsContextInitialized);
+		vidgfx_context_add_initialized_callback(
+			gfx, gfxInitializedHandler, mgr);
 	}
-	connect(gfx, &GraphicsContext::destroying,
-		mgr, &HookManager::graphicsContextInitialized);
+	vidgfx_context_add_destroying_callback(
+		gfx, gfxDestroyingHandler, mgr);
 }
 
 HookManager::HookManager()
@@ -53,21 +80,30 @@ HookManager::HookManager()
 
 	// Make sure we know when we can initialize or destroy hardware resources
 	// for our child capture objects
-	GraphicsContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
 	if(gfx != NULL) {
-		if(gfx->isValid())
+		if(vidgfx_context_is_valid(gfx))
 			graphicsContextInitialized(gfx);
 		else {
-			connect(gfx, &GraphicsContext::initialized,
-				this, &HookManager::graphicsContextInitialized);
+			vidgfx_context_add_initialized_callback(
+				gfx, gfxInitializedHandler, this);
 		}
-		connect(gfx, &GraphicsContext::destroying,
-			this, &HookManager::graphicsContextDestroyed);
+		vidgfx_context_add_destroying_callback(
+			gfx, gfxDestroyingHandler, this);
 	}
 }
 
 HookManager::~HookManager()
 {
+	// Remove callbacks
+	VidgfxContext *gfx = CaptureManager::getManager()->getGraphicsContext();
+	if(vidgfx_context_is_valid(gfx)) {
+		vidgfx_context_remove_initialized_callback(
+			gfx, gfxInitializedHandler, this);
+		vidgfx_context_remove_destroying_callback(
+			gfx, gfxDestroyingHandler, this);
+	}
+
 	// Delete memory segment
 	if(m_shm != NULL) {
 		// Notify hooks that they should terminate
@@ -370,21 +406,30 @@ void HookManager::realTimeFrameEvent(int numDropped, int lateByUsec)
 	processInterprocessLog();
 }
 
-void HookManager::graphicsContextInitialized(GraphicsContext *gfx)
+void HookManager::graphicsContextInitialized(VidgfxContext *gfx)
 {
 #ifdef Q_OS_WIN
-	D3DContext *d3dGfx = static_cast<D3DContext *>(gfx);
-	connect(d3dGfx, &D3DContext::hasDxgi11Changed,
-		this, &HookManager::hasDxgi11Changed);
-	connect(d3dGfx, &D3DContext::hasBgraTexSupportChanged,
-		this, &HookManager::hasBgraTexSupportChanged);
+	VidgfxD3DContext *d3dGfx = vidgfx_context_get_d3dcontext(gfx);
+	vidgfx_d3dcontext_add_dxgi11_changed_callback(
+		d3dGfx, gfxDxgi11ChangedHandler, this);
+	vidgfx_d3dcontext_add_bgra_tex_support_changed_callback(
+		d3dGfx, gfxBgraTexSupportChangedHandler, this);
 #elif
 #error Unsupported platform
 #endif
 }
 
-void HookManager::graphicsContextDestroyed(GraphicsContext *gfx)
+void HookManager::graphicsContextDestroyed(VidgfxContext *gfx)
 {
+#ifdef Q_OS_WIN
+	VidgfxD3DContext *d3dGfx = vidgfx_context_get_d3dcontext(gfx);
+	vidgfx_d3dcontext_remove_dxgi11_changed_callback(
+		d3dGfx, gfxDxgi11ChangedHandler, this);
+	vidgfx_d3dcontext_remove_bgra_tex_support_changed_callback(
+		d3dGfx, gfxBgraTexSupportChangedHandler, this);
+#elif
+#error Unsupported platform
+#endif
 }
 
 void HookManager::hasDxgi11Changed(bool hasDxgi11)

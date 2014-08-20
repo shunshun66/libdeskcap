@@ -19,10 +19,10 @@
 #define HOOKMANAGER_H
 
 #include "include/libdeskcap.h"
+#include <Libvidgfx/libvidgfx.h>
 #include <QtCore/QObject>
 #include <QtCore/QVector>
 
-class GraphicsContext;
 class InterprocessLog;
 class MainSharedSegment;
 
@@ -44,7 +44,7 @@ protected: // Members ---------------------------------------------------------
 	QVector<WinId>		m_capturingWindows;
 
 public: // Static methods -----------------------------------------------------
-	static void		doGraphicsContextInitialized(GraphicsContext *gfx);
+	static void		doGraphicsContextInitialized(VidgfxContext *gfx);
 
 public: // Constructor/destructor ---------------------------------------------
 	HookManager();
@@ -72,8 +72,8 @@ Q_SLOTS: // Slots -------------------------------------------------------------
 	// Realtime frame event is needed as it is processed before queued frames
 	// and real-time ticks.
 	void	realTimeFrameEvent(int numDropped, int lateByUsec);
-	void	graphicsContextInitialized(GraphicsContext *gfx);
-	void	graphicsContextDestroyed(GraphicsContext *gfx);
+	void	graphicsContextInitialized(VidgfxContext *gfx);
+	void	graphicsContextDestroyed(VidgfxContext *gfx);
 	void	hasDxgi11Changed(bool hasDxgi11);
 	void	hasBgraTexSupportChanged(bool hasBgraTexSupport);
 

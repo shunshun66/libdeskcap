@@ -282,7 +282,7 @@ QSize WinCaptureObject::getSize() const
 	}
 }
 
-Texture *WinCaptureObject::getTexture() const
+VidgfxTex *WinCaptureObject::getTexture() const
 {
 	switch(m_actualMethod) {
 	default:
