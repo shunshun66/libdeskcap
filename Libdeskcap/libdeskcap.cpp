@@ -25,9 +25,9 @@
 //=============================================================================
 // Validate library versions
 
-#if LIBVIDGFX_VER_MAJOR != 0 || \
-	LIBVIDGFX_VER_MINOR != 6 || \
-	LIBVIDGFX_VER_BUILD != 0
+#if VIDGFX_VER_MAJOR != 0 || \
+	VIDGFX_VER_MINOR != 6 || \
+	VIDGFX_VER_PATCH != 0
 #error Mismatched Libvidgfx version!
 #endif
 
